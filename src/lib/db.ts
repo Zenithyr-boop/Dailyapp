@@ -4,7 +4,7 @@
  * Weights are stored in kg; dates as local `YYYY-MM-DD` keys.
  */
 import Dexie, { type EntityTable } from 'dexie'
-import type { Rank } from './xp'
+import type { Rank } from './rank'
 import type { UnitSystem } from './units'
 
 export interface Profile {
@@ -13,8 +13,13 @@ export interface Profile {
   units: UnitSystem
   totalXp: number
   level: number
+  /** Highest rank earned. Never drops. */
   rank: Rank
   streak: number
+  /** Highest level already celebrated, so a level-up shows only once. */
+  bestLevel: number
+  /** Pending level-up / rank-up moment, cleared when the user dismisses it. */
+  celebration?: { level: number; rank?: Rank }
   goals: {
     steps?: number
     sleepHours?: number
@@ -25,10 +30,33 @@ export interface Profile {
   updatedAt: number
 }
 
-export interface Quest {
-  id: string
+/** `check` = simple checkbox; `count` = number target with a + button (e.g. 3 L water). */
+export type QuestKind = 'check' | 'count'
+
+/** Fields shared by a quest definition and its daily copy. */
+export interface QuestFields {
   title: string
   xp: number
+  kind: QuestKind
+  /** Count quests only: target amount, unit label and + step. */
+  target?: number
+  unit?: string
+  step?: number
+}
+
+/** One of the user's quests (habits). Copied into each day's record. */
+export interface QuestDef extends QuestFields {
+  id: string
+  /** Sort position, ascending. */
+  order: number
+  updatedAt: number
+}
+
+/** A quest as it stood on a given day, with that day's progress. */
+export interface Quest extends QuestFields {
+  id: string
+  /** Count quests only: amount logged so far. */
+  value?: number
   done: boolean
 }
 
@@ -91,6 +119,7 @@ export interface ProgramState {
 
 export type ChalkDB = Dexie & {
   profile: EntityTable<Profile, 'id'>
+  quests: EntityTable<QuestDef, 'id'>
   days: EntityTable<Day, 'date'>
   workouts: EntityTable<WorkoutTemplate, 'id'>
   sessions: EntityTable<Session, 'id'>
@@ -107,4 +136,8 @@ db.version(1).stores({
   sessions: 'id, date, templateId',
   food: 'id, date',
   programs: 'id, kind',
+})
+
+db.version(2).stores({
+  quests: 'id, order',
 })

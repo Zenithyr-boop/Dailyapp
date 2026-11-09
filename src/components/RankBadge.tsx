@@ -1,4 +1,4 @@
-import type { Rank } from '../lib/xp'
+import type { Rank } from '../lib/rank'
 
 interface RankBadgeProps {
   rank: Rank

@@ -1,21 +1,42 @@
 import {
   ALL_QUESTS_BONUS,
+  BASE_XP,
+  clampQuestXp,
   dayXp,
+  DIFFICULTIES,
+  difficultyForXp,
+  isDayComplete,
   levelFromTotalXp,
-  rankForLevel,
+  QUEST_XP_MAX,
+  QUEST_XP_MIN,
   totalXpForLevel,
   xpToNext,
 } from './xp'
 
+/** A full day with the default quests: 120 + 60 + 40 + 40 + 30 + 30 + bonus. */
+const FULL_DAY = 320 + ALL_QUESTS_BONUS
+
+function fullDaysToReach(level: number): number {
+  return Math.ceil(totalXpForLevel(level) / FULL_DAY)
+}
+
 describe('xpToNext', () => {
-  it('starts at 100 and grows by 50 per level', () => {
-    expect(xpToNext(1)).toBe(100)
-    expect(xpToNext(2)).toBe(150)
-    expect(xpToNext(10)).toBe(550)
+  it('starts at the base cost', () => {
+    expect(xpToNext(1)).toBe(BASE_XP)
   })
 
-  it('never shrinks', () => {
-    for (let l = 1; l < 100; l++) expect(xpToNext(l + 1)).toBeGreaterThan(xpToNext(l))
+  it('grows about 6% per level (exponential)', () => {
+    for (let l = 1; l < 60; l++) {
+      const ratio = xpToNext(l + 1) / xpToNext(l)
+      expect(ratio).toBeGreaterThan(1.04)
+      expect(ratio).toBeLessThan(1.08)
+    }
+    // Exponential, not linear: the step between levels keeps getting bigger.
+    expect(xpToNext(41) - xpToNext(40)).toBeGreaterThan(xpToNext(11) - xpToNext(10))
+  })
+
+  it('is a whole multiple of 10', () => {
+    for (let l = 1; l < 80; l++) expect(xpToNext(l) % 10).toBe(0)
   })
 
   it('rejects invalid levels', () => {
@@ -32,28 +53,39 @@ describe('totalXpForLevel', () => {
       sum += xpToNext(l)
     }
   })
+})
 
-  it('needs 63,700 XP for level 50', () => {
-    expect(totalXpForLevel(50)).toBe(63_700)
+describe('pacing with full default days (400 XP)', () => {
+  it('reaches Level 2 within the first few days', () => {
+    expect(fullDaysToReach(2)).toBeLessThanOrEqual(3)
+  })
+
+  it('reaches Level 10 in about 3–4 weeks', () => {
+    expect(fullDaysToReach(10)).toBeGreaterThanOrEqual(21)
+    expect(fullDaysToReach(10)).toBeLessThanOrEqual(28)
+  })
+
+  it('takes over a year of full days to reach Level 50', () => {
+    expect(fullDaysToReach(50)).toBeGreaterThan(365)
+    expect(fullDaysToReach(50)).toBeLessThan(730)
   })
 })
 
 describe('levelFromTotalXp', () => {
   it('handles zero and negatives', () => {
-    expect(levelFromTotalXp(0)).toEqual({ level: 1, xpIntoLevel: 0, xpForLevel: 100, fraction: 0 })
+    expect(levelFromTotalXp(0)).toEqual({ level: 1, xpIntoLevel: 0, xpForLevel: BASE_XP, fraction: 0 })
     expect(levelFromTotalXp(-50).level).toBe(1)
   })
 
   it('levels up exactly on the boundary', () => {
-    expect(levelFromTotalXp(99).level).toBe(1)
-    expect(levelFromTotalXp(100).level).toBe(2)
-    expect(levelFromTotalXp(100).xpIntoLevel).toBe(0)
+    expect(levelFromTotalXp(BASE_XP - 1).level).toBe(1)
+    expect(levelFromTotalXp(BASE_XP).level).toBe(2)
+    expect(levelFromTotalXp(BASE_XP).xpIntoLevel).toBe(0)
   })
 
   it('reports progress within a level', () => {
-    const p = levelFromTotalXp(175) // level 2 starts at 100 and needs 150
+    const p = levelFromTotalXp(BASE_XP + xpToNext(2) / 2)
     expect(p.level).toBe(2)
-    expect(p.xpIntoLevel).toBe(75)
     expect(p.fraction).toBe(0.5)
   })
 
@@ -62,22 +94,26 @@ describe('levelFromTotalXp', () => {
   })
 })
 
-describe('rankForLevel', () => {
-  it.each([
-    [1, 'E'],
-    [4, 'E'],
-    [5, 'D'],
-    [9, 'D'],
-    [10, 'C'],
-    [19, 'C'],
-    [20, 'B'],
-    [34, 'B'],
-    [35, 'A'],
-    [49, 'A'],
-    [50, 'S'],
-    [120, 'S'],
-  ] as const)('level %i is rank %s', (level, rank) => {
-    expect(rankForLevel(level)).toBe(rank)
+describe('quest XP', () => {
+  it('offers difficulty presets inside the allowed range, easiest first', () => {
+    for (const d of DIFFICULTIES) {
+      expect(d.xp).toBeGreaterThanOrEqual(QUEST_XP_MIN)
+      expect(d.xp).toBeLessThanOrEqual(QUEST_XP_MAX)
+    }
+    const values = DIFFICULTIES.map((d) => d.xp)
+    expect([...values].sort((a, b) => a - b)).toEqual(values)
+  })
+
+  it('matches a preset by XP value', () => {
+    expect(difficultyForXp(60)?.label).toBe('Hard')
+    expect(difficultyForXp(35)).toBeUndefined()
+  })
+
+  it('clamps and rounds custom values', () => {
+    expect(clampQuestXp(0)).toBe(QUEST_XP_MIN)
+    expect(clampQuestXp(5000)).toBe(QUEST_XP_MAX)
+    expect(clampQuestXp(33)).toBe(35)
+    expect(clampQuestXp(Number.NaN)).toBe(QUEST_XP_MIN)
   })
 })
 
@@ -89,5 +125,6 @@ describe('dayXp', () => {
 
   it('gives nothing for an empty day', () => {
     expect(dayXp([])).toBe(0)
+    expect(isDayComplete([])).toBe(false)
   })
 })

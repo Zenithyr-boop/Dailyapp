@@ -9,7 +9,7 @@ describe('db', () => {
   it('stores and reads a day by its key', async () => {
     await db.days.put({
       date: '2026-11-09',
-      quests: [{ id: 'q1', title: 'Drink 3L water', xp: 20, done: false }],
+      quests: [{ id: 'q1', title: 'Drink 3L water', xp: 20, kind: 'count', target: 3, unit: 'L', value: 0, done: false }],
       updatedAt: Date.now(),
     })
     const day = await db.days.get('2026-11-09')

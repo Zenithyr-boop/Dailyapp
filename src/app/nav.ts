@@ -18,7 +18,7 @@ export interface NavItem {
 
 /** Main destinations: bottom tab bar on mobile, top of the side nav on desktop. */
 export const PRIMARY_NAV: NavItem[] = [
-  { to: '/', label: 'Quests', Icon: QuestsIcon },
+  { to: '/quests', label: 'Quests', Icon: QuestsIcon },
   { to: '/train', label: 'Train', Icon: TrainIcon },
   { to: '/food', label: 'Food', Icon: FoodIcon },
   { to: '/squad', label: 'Squad', Icon: SquadIcon },
