@@ -1,0 +1,40 @@
+/*
+ * "Midnight" design tokens (direction B). Components use these via Tailwind
+ * utilities (bg-panel, text-muted, border-panel-edge, font-display, ...).
+ * Never put raw hex values in components.
+ */
+@theme {
+  /* Wipe Tailwind's default palette so only Midnight tokens exist. */
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --color-bg: #0b0e14;
+  --color-panel: #121722;
+  --color-panel-edge: #1f3554;
+  --color-line: #222a3a;
+  --color-line-soft: #1a2130;
+  --color-text: #e6ebf5;
+  --color-muted: #93a0b8;
+  --color-faint: #56627a;
+  --color-accent: #4da3ff;
+  --color-rank: #a796ff;
+  --color-on-accent: #0b0e14;
+
+  /* Square corners everywhere: no rounded-* utilities exist. */
+  --radius-*: initial;
+
+  /* No shadows / glows. */
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --text-shadow-*: initial;
+
+  --font-*: initial;
+  --font-display: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;
+  --font-body: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+
+  /* Minimum touch target. */
+  --spacing-touch: 44px;
+}
