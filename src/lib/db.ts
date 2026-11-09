@@ -117,7 +117,7 @@ export interface ProgramState {
   updatedAt: number
 }
 
-export type ChalkDB = Dexie & {
+export type FromZeroDB = Dexie & {
   profile: EntityTable<Profile, 'id'>
   quests: EntityTable<QuestDef, 'id'>
   days: EntityTable<Day, 'date'>
@@ -127,7 +127,9 @@ export type ChalkDB = Dexie & {
   programs: EntityTable<ProgramState, 'id'>
 }
 
-export const db = new Dexie('chalk') as ChalkDB
+// IndexedDB name stays 'chalk' (the app's old working name): renaming it would
+// orphan every existing device's local data.
+export const db = new Dexie('chalk') as FromZeroDB
 
 db.version(1).stores({
   profile: 'id',
