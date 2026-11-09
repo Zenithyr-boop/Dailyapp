@@ -4,12 +4,14 @@ import { ChevronRightIcon } from '../../components/icons'
 import { ComingSoon } from '../../components/ComingSoon'
 import { PageHeader } from '../../components/PageHeader'
 import { Panel } from '../../components/Panel'
+import { AccountPanel } from './AccountPanel'
 
 export function ProfilePage() {
   return (
     <>
       <PageHeader title="Me" />
       <div className="space-y-4">
+        <AccountPanel />
         {/* On mobile these screens have no tab, so link them here. */}
         <Panel title="More" className="md:hidden">
           <ul className="-my-2">
@@ -31,7 +33,7 @@ export function ProfilePage() {
             'Profile, level and rank history',
             'Units: metric / imperial',
             'Goals: steps, sleep, water, calories, protein',
-            'Sign in to sync across devices (optional)',
+            'Sync across devices when signed in',
           ]}
         />
       </div>
