@@ -1,0 +1,72 @@
+rules_version = '2';
+
+// FromZero — Cloud Firestore security rules.
+// Paste into Firebase console → Firestore Database → Rules → Publish.
+// Anything not matched below is denied.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isUser(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // ---- Private data: each user reads and writes only their own tree ----
+    // users/{uid}, plus quests, days, workouts, sessions, food, programs under it.
+    match /users/{uid} {
+      allow read, write: if isUser(uid);
+
+      match /{document=**} {
+        allow read, write: if isUser(uid);
+      }
+    }
+
+    // ---- Shared exercise library: read-only for users ----
+    match /movements/{movementId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    // ---- Squads: only members can read ----
+    // A squad document keeps `ownerId` and `memberIds` (list of uids).
+    match /squads/{squadId} {
+      function squad() {
+        return get(/databases/$(database)/documents/squads/$(squadId)).data;
+      }
+
+      allow read: if signedIn() && request.auth.uid in resource.data.memberIds;
+
+      // Create a squad with yourself as owner and member.
+      allow create: if signedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.auth.uid in request.resource.data.memberIds;
+
+      // Members can update progress; the owner can't be changed.
+      allow update: if signedIn()
+        && request.auth.uid in resource.data.memberIds
+        && request.resource.data.ownerId == resource.data.ownerId;
+
+      allow delete: if signedIn() && request.auth.uid == resource.data.ownerId;
+
+      // Subcollections (check-ins, messages, ...) follow squad membership.
+      match /{document=**} {
+        allow read, write: if signedIn() && request.auth.uid in squad().memberIds;
+      }
+    }
+
+    // ---- Community posts: readable by all signed-in users ----
+    // A post keeps `authorId`; only the author can change or delete it.
+    match /community/{postId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.authorId == request.auth.uid;
+      allow update: if signedIn()
+        && resource.data.authorId == request.auth.uid
+        && request.resource.data.authorId == request.auth.uid;
+      allow delete: if signedIn() && resource.data.authorId == request.auth.uid;
+    }
+  }
+}
