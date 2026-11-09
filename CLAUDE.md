@@ -1,4 +1,7 @@
-# Chalk (working name) — free fitness & discipline tracker
+# FromZero — free fitness & discipline tracker
+
+App name: **FromZero** (one word, capital F and Z). Use it in the UI, page titles, PWA manifest,
+Android app name and store-style copy. Package/app id for Android: `app.fromzero` (lowercase).
 
 Read this at the start of every session. Keep it up to date when decisions change.
 
@@ -23,13 +26,20 @@ It ships as:
   Signing in syncs to Firebase (Auth + Cloud Firestore), staying inside the free Spark plan.
 - Android: Capacitor 8; health data via `@capgo/capacitor-health` (Health Connect)
 - Food data: Open Food Facts API (free, barcode lookup)
-- Hosting: Cloudflare Pages, connected to the GitHub repo (every push to `main` auto-deploys;
-  build command `npm run build`, output `dist`, env vars prefixed `VITE_`). No Firebase CLI needed.
+- Hosting: Firebase Hosting, deployed by GitHub Actions (`FirebaseExtended/action-hosting-deploy@v0`)
+  on every push to `main`, using the repo secret `FIREBASE_SERVICE_ACCOUNT`. Pull requests get
+  preview channels. Nobody runs `firebase login` or `firebase deploy` by hand.
+- Firestore rules live in `firestore.rules`; I paste them into the console (Rules → Publish).
+- Google sign-in in the Android APK will need a native plugin (`@capacitor-firebase/authentication`);
+  popup sign-in only works on the website.
 
 ## Commands
 - `npm run dev` — local dev server
 - `npm run build` — production build (must pass before committing)
 - `npm run lint` / `npm run test`
+- `npm run emulators` + `npm run dev:emulator` — local Firebase Auth emulator (port 9099) and a
+  dev server on 5174 that signs in against it with fake accounts (launch configs `auth-emulator`,
+  `fromzero-dev-emulator`). Use these to test sign-in; never create test accounts in the real project.
 - `npx cap sync android` — copy the web build into the Android project
 - `npx cap open android` — open in Android Studio to build the APK
 
@@ -105,7 +115,7 @@ squad data readable by members only; community posts readable by all signed-in u
 - I use only the Claude desktop app's Code tab. I never type in a terminal.
 - You run every command yourself (npm, git, npx cap, etc.) and start the dev server so the
   app shows in the Browser pane.
-- When something needs a step outside this app (GitHub, Firebase console, Cloudflare dashboard,
+- When something needs a step outside this app (GitHub website, Firebase console,
   Android Studio), give me short click-by-click instructions with the exact button names.
 - Firestore security rules: write them to `firestore.rules` and tell me to paste them into
   Firebase console → Firestore → Rules → Publish.
@@ -117,6 +127,8 @@ squad data readable by members only; community posts readable by all signed-in u
 - Plan first for anything touching more than a couple of files; wait for my OK.
 - One feature per session/branch. Run `npm run build` (and tests) before saying it's done.
 - Commit in small steps with clear messages.
-- Never commit secrets: Firebase config goes in `.env.local`; Android keystore files never go in git.
+- The Firebase web config is public by design (security comes from Firestore rules), so it lives in
+  a committed `.env` as `VITE_FIREBASE_*` variables. Real secrets never go in git: the service
+  account JSON (GitHub secret only) and Android keystore files.
 - Default units metric with an imperial toggle. All dates in the user's local time zone.
 - "75 Hard" is trademarked — call it "75-day challenge" in the UI.
