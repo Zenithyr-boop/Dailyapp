@@ -6,8 +6,14 @@ dist/
 dev-dist/
 *.tsbuildinfo
 
-# secrets — Firebase config lives in .env.local
-.env*
+# env: .env holds the public Firebase web config and IS committed;
+# local overrides (.env.local, .env.*.local) are not
+.env*.local
+
+# Firebase CLI cache and service account keys — never commit
+.firebase/
+*-firebase-adminsdk-*.json
+service-account*.json
 
 # Android signing keys — never commit
 *.keystore
