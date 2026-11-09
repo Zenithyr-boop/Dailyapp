@@ -76,13 +76,23 @@ Rules:
 
 ## Progression rules
 - Daily quests = the user's habits for the day; each has an XP value. Reset at local midnight.
+  Two types: checkbox, and number target (e.g. 3 L water, with a + step).
+- Quest XP: pick a difficulty (Easy 20 / Medium 40 / Hard 60 / Very hard 90 / Extreme 120),
+  then fine-tune between 10 and 150. No unlimited values (keeps pacing and squads fair).
 - Finishing all quests: +80 XP bonus. Missing any quest resets the streak.
-- Ranks by level: E 1–4, D 5–9, C 10–19, B 20–34, A 35–49, S 50+.
-- XP needed for the next level grows gradually; keep the formula in `lib/xp.ts` with tests.
+- XP curve is exponential: +6% per level, base 850 (`lib/xp.ts`, with tests).
+  A full default day = 400 XP → Level 10 in ~24 days, Level 50 in ~19 months.
+- Ranks use "rank trials" (`lib/rank.ts`): each rank needs a minimum level (E 1, D 5, C 10,
+  B 20, A 35, S 50) plus, later, trials from other areas — goals reached, strength relative
+  to body weight, progress toward the user's OWN body goal (never body weight itself).
+  Untracked stats are skipped. Ranks are earned in order and never drop.
+  Only the level trial exists so far; Train/Body/Food add theirs.
 
 ## Data model (Firestore, mirrors local Dexie tables)
 - `users/{uid}` profile, units (metric/imperial), goals, level, xp, rank
-- `users/{uid}/days/{YYYY-MM-DD}` quests + completion, steps, sleep, weight, water
+- `users/{uid}/quests/{id}` the user's quest list (title, xp, type, target/unit/step, order)
+- `users/{uid}/days/{YYYY-MM-DD}` a copy of that day's quests + progress, steps, sleep, weight, water
+  (edits to quests apply to today; past days stay frozen)
 - `users/{uid}/workouts/{id}` saved templates; `users/{uid}/sessions/{id}` logged sessions (sets: kg, reps, rpe)
 - `users/{uid}/food/{id}` food log entries with macros
 - `users/{uid}/programs/{id}` active program state (day N, strict mode)
