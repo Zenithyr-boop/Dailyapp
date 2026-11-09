@@ -35,7 +35,7 @@ export function SideNav({ primary, secondary }: { primary: NavItem[]; secondary:
     >
       <div className="flex h-16 items-center gap-2.5 px-5">
         <span className="size-3 bg-accent" aria-hidden="true" />
-        <span className="font-display text-2xl font-extrabold uppercase tracking-[0.14em]">Chalk</span>
+        <span className="font-display text-2xl font-extrabold uppercase tracking-[0.14em]">FromZero</span>
       </div>
       <SideNavList items={primary} />
       <p className="label mt-6 mb-1 px-5">More</p>

@@ -12,8 +12,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],
       manifest: {
-        name: 'Chalk',
-        short_name: 'Chalk',
+        name: 'FromZero',
+        short_name: 'FromZero',
         description: 'Free fitness & discipline tracker',
         theme_color: '#0B0E14',
         background_color: '#0B0E14',
