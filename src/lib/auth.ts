@@ -79,6 +79,29 @@ export async function signOutUser(): Promise<void> {
   await signOut(auth)
 }
 
+/**
+ * Confirm it's really the user before deleting the account (Firebase requires a
+ * recent sign-in). Google accounts pick their account again in a popup;
+ * email accounts enter their password.
+ */
+export async function reauthenticate(password?: string): Promise<void> {
+  const [auth, { EmailAuthProvider, GoogleAuthProvider, reauthenticateWithCredential, reauthenticateWithPopup }] =
+    await Promise.all([getFirebaseAuth(), sdk()])
+  const user = auth.currentUser
+  if (!user) throw Object.assign(new Error('Not signed in'), { code: 'auth/no-current-user' })
+  if (password === undefined) {
+    await reauthenticateWithPopup(user, new GoogleAuthProvider())
+  } else {
+    await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email ?? '', password))
+  }
+}
+
+/** Delete the signed-in user's sign-in account. Call `reauthenticate` first. */
+export async function deleteCurrentUser(): Promise<void> {
+  const [auth, { deleteUser }] = await Promise.all([getFirebaseAuth(), sdk()])
+  if (auth.currentUser) await deleteUser(auth.currentUser)
+}
+
 const MESSAGES: Record<string, string> = {
   'auth/invalid-credential': 'Email or password is wrong.',
   'auth/wrong-password': 'Email or password is wrong.',
@@ -94,6 +117,9 @@ const MESSAGES: Record<string, string> = {
   'auth/operation-not-allowed': 'This sign-in method isn’t switched on yet.',
   'auth/unauthorized-domain': 'Sign-in isn’t allowed on this web address yet.',
   'auth/user-disabled': 'This account has been disabled.',
+  'auth/user-mismatch': 'That’s a different account. Pick the one you’re signed in with.',
+  'auth/requires-recent-login': 'Please confirm it’s you again, then try once more.',
+  'auth/no-current-user': 'You’re signed out. Sign in again first.',
 }
 
 /** Codes that mean the user backed out; show nothing. */

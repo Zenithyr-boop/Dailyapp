@@ -7,12 +7,9 @@ import {
   sendPasswordReset,
   signInWithEmail,
   signInWithGoogle,
-  signOutUser,
-  type AuthUser,
 } from '../../lib/auth'
+import { SignedInPanel } from './SignedInPanel'
 import { useAuth } from './useAuth'
-
-const SYNC_NOTE = 'Your data stays on this device. Syncing between devices comes in a later update.'
 
 /** Account box on the Me screen: optional sign-in. The app works fully without it. */
 export function AccountPanel() {
@@ -36,45 +33,8 @@ export function AccountPanel() {
     )
   }
 
-  if (auth.status === 'signed-in') return <SignedIn user={auth.user} />
+  if (auth.status === 'signed-in') return <SignedInPanel user={auth.user} />
   return <SignedOut />
-}
-
-function SignedIn({ user }: { user: AuthUser }) {
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  async function handleSignOut() {
-    setBusy(true)
-    setError(null)
-    try {
-      await signOutUser()
-    } catch (err) {
-      setError(authErrorMessage(err))
-      setBusy(false)
-    }
-  }
-
-  return (
-    <Panel title="Account" aside="Signed in">
-      <div className="space-y-4">
-        <div>
-          <p className="font-display text-xl font-bold break-all">{user.displayName ?? user.email}</p>
-          {user.displayName && user.email && <p className="text-muted break-all">{user.email}</p>}
-          <p className="label mt-1">{user.provider === 'google.com' ? 'Google account' : 'Email account'}</p>
-        </div>
-        <p className="text-muted">{SYNC_NOTE}</p>
-        {error && (
-          <p role="alert" className="border-l-2 border-accent pl-3 text-text">
-            {error}
-          </p>
-        )}
-        <Button variant="secondary" onClick={handleSignOut} disabled={busy} className="w-full sm:w-auto">
-          {busy ? 'Signing out…' : 'Sign out'}
-        </Button>
-      </div>
-    </Panel>
-  )
 }
 
 type Mode = 'sign-in' | 'create'
@@ -128,7 +88,7 @@ function SignedOut() {
     <Panel title="Account" aside="Optional">
       <div className="space-y-4">
         <p className="text-muted">
-          FromZero works fully without an account. Sign in to keep your progress safe when syncing arrives.
+          FromZero works fully without an account. Sign in to back up your progress and sync it across devices.
         </p>
 
         <Button variant="secondary" className="w-full" disabled={busy} onClick={() => void run(signInWithGoogle)}>

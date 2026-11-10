@@ -1,7 +1,8 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import type { AuthUser } from '../../lib/auth'
+import type { SyncStatus } from '../../lib/sync/engine'
 
-// Mock the auth wrapper so tests never load the Firebase SDK or hit the network.
+// Mock the auth wrapper and the sync engine so tests never load Firebase or hit the network.
 const mocks = vi.hoisted(() => ({
   available: true,
   listener: null as ((user: AuthUser | null) => void) | null,
@@ -10,6 +11,18 @@ const mocks = vi.hoisted(() => ({
   signInWithGoogle: vi.fn(),
   sendPasswordReset: vi.fn(),
   signOutUser: vi.fn(),
+  reauthenticate: vi.fn(),
+  deleteCurrentUser: vi.fn(),
+  // Sync engine
+  status: { state: 'synced', pending: 0 } as SyncStatus,
+  statusListeners: new Set<() => void>(),
+  pendingOnSignOut: 0,
+  stopSync: vi.fn(),
+  clearLocalData: vi.fn(),
+  deleteCloudData: vi.fn(),
+  syncNow: vi.fn(),
+  /** Order in which the mocked actions ran. */
+  calls: [] as string[],
 }))
 
 vi.mock('../../lib/auth', async () => {
@@ -30,8 +43,25 @@ vi.mock('../../lib/auth', async () => {
     signInWithGoogle: mocks.signInWithGoogle,
     sendPasswordReset: mocks.sendPasswordReset,
     signOutUser: mocks.signOutUser,
+    reauthenticate: mocks.reauthenticate,
+    deleteCurrentUser: mocks.deleteCurrentUser,
   }
 })
+
+vi.mock('../../lib/sync/engine', () => ({
+  getSyncStatus: () => mocks.status,
+  subscribeSyncStatus: (fn: () => void) => {
+    mocks.statusListeners.add(fn)
+    return () => mocks.statusListeners.delete(fn)
+  },
+  flushBeforeSignOut: () => Promise.resolve(mocks.pendingOnSignOut),
+  stopSync: mocks.stopSync,
+  clearLocalData: mocks.clearLocalData,
+  deleteCloudData: mocks.deleteCloudData,
+  syncNow: mocks.syncNow,
+}))
+
+vi.mock('./accountSync', () => ({ syncOptions: { createRemote: vi.fn() } }))
 
 const { AccountPanel } = await import('./AccountPanel')
 
@@ -41,6 +71,13 @@ function emit(user: AuthUser | null) {
   act(() => mocks.listener?.(user))
 }
 
+function setStatus(status: SyncStatus) {
+  act(() => {
+    mocks.status = status
+    mocks.statusListeners.forEach((fn) => fn())
+  })
+}
+
 function firebaseError(code: string) {
   return Object.assign(new Error(code), { code })
 }
@@ -48,14 +85,26 @@ function firebaseError(code: string) {
 beforeEach(() => {
   mocks.available = true
   mocks.listener = null
-  for (const fn of [
-    mocks.signInWithEmail,
-    mocks.createAccount,
-    mocks.signInWithGoogle,
-    mocks.sendPasswordReset,
-    mocks.signOutUser,
-  ]) {
-    fn.mockReset().mockResolvedValue(undefined)
+  mocks.status = { state: 'synced', pending: 0, lastSyncedAt: Date.now() }
+  mocks.pendingOnSignOut = 0
+  mocks.calls = []
+  const actions = {
+    signInWithEmail: mocks.signInWithEmail,
+    createAccount: mocks.createAccount,
+    signInWithGoogle: mocks.signInWithGoogle,
+    sendPasswordReset: mocks.sendPasswordReset,
+    signOutUser: mocks.signOutUser,
+    reauthenticate: mocks.reauthenticate,
+    deleteCurrentUser: mocks.deleteCurrentUser,
+    stopSync: mocks.stopSync,
+    clearLocalData: mocks.clearLocalData,
+    deleteCloudData: mocks.deleteCloudData,
+    syncNow: mocks.syncNow,
+  }
+  for (const [name, fn] of Object.entries(actions)) {
+    fn.mockReset().mockImplementation(async () => {
+      mocks.calls.push(name)
+    })
   }
 })
 
@@ -137,16 +186,123 @@ describe('AccountPanel', () => {
     expect(await screen.findByText(/reset link is on its way/i)).toBeInTheDocument()
   })
 
-  it('shows the Google account and signs out', async () => {
+  it('shows the Google account and its sync status', () => {
     render(<AccountPanel />)
     emit({ uid: 'u2', email: 'g@example.com', displayName: 'Sam Lee', provider: 'google.com' })
     expect(screen.getByText('Sam Lee')).toBeInTheDocument()
     expect(screen.getByText('Google account')).toBeInTheDocument()
-    expect(screen.getByText(/syncing between devices comes in a later update/i)).toBeInTheDocument()
+    expect(screen.getByText('Synced · just now')).toBeInTheDocument()
+    expect(screen.getByText(/today on this device: \d+ reads · \d+ writes/i)).toBeInTheDocument()
+  })
+})
 
+describe('sync status', () => {
+  it('shows offline with the number of waiting changes', () => {
+    render(<AccountPanel />)
+    emit(emailUser)
+    setStatus({ state: 'offline', pending: 3 })
+    expect(screen.getByText('Offline, will sync')).toBeInTheDocument()
+    expect(screen.getByText('3 changes waiting to upload')).toBeInTheDocument()
+  })
+
+  it('shows a sync error with a Retry button', () => {
+    render(<AccountPanel />)
+    emit(emailUser)
+    setStatus({ state: 'error', pending: 1, error: 'permission-denied' })
+    expect(screen.getByText('Sync error')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(mocks.syncNow).toHaveBeenCalledOnce()
+  })
+})
+
+describe('signing out', () => {
+  async function openSignOut() {
+    render(<AccountPanel />)
+    emit(emailUser)
     fireEvent.click(screen.getByRole('button', { name: 'Sign out' }))
-    expect(mocks.signOutUser).toHaveBeenCalledOnce()
+    const dialog = screen.getByRole('dialog', { name: 'Sign out' })
+    await within(dialog).findByRole('radio', { name: /keep it on this device/i })
+    return dialog
+  }
+
+  it('keeps the data on this device by default', async () => {
+    const dialog = await openSignOut()
+    expect(within(dialog).getByRole('radio', { name: /keep it/i })).toBeChecked()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Sign out' }))
+    await vi.waitFor(() => expect(mocks.signOutUser).toHaveBeenCalledOnce())
+    expect(mocks.calls).toEqual(['stopSync', 'signOutUser'])
+
     emit(null)
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument()
+  })
+
+  it('can remove the data from this device', async () => {
+    const dialog = await openSignOut()
+    fireEvent.click(within(dialog).getByRole('radio', { name: /remove it/i }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Sign out' }))
+    await vi.waitFor(() => expect(mocks.signOutUser).toHaveBeenCalledOnce())
+    expect(mocks.calls).toEqual(['stopSync', 'clearLocalData', 'signOutUser'])
+  })
+
+  it('warns when changes have not reached the cloud', async () => {
+    mocks.pendingOnSignOut = 2
+    const dialog = await openSignOut()
+    expect(within(dialog).getByRole('alert')).toHaveTextContent(/2 changes haven’t reached the cloud/)
+    expect(within(dialog).getByText(/except 2 changes not uploaded yet, which will be lost/)).toBeInTheDocument()
+  })
+
+  it('can be cancelled', async () => {
+    const dialog = await openSignOut()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(mocks.signOutUser).not.toHaveBeenCalled()
+  })
+})
+
+describe('deleting the account', () => {
+  function openDelete(user: AuthUser = emailUser) {
+    render(<AccountPanel />)
+    emit(user)
+    fireEvent.click(screen.getByRole('button', { name: 'Delete my account' }))
+    return screen.getByRole('dialog', { name: 'Delete my account' })
+  }
+
+  it('needs DELETE typed and the password before it runs', async () => {
+    const dialog = openDelete()
+    const submit = within(dialog).getByRole('button', { name: 'Delete my account' })
+    expect(submit).toBeDisabled()
+    fireEvent.change(within(dialog).getByLabelText('Type DELETE to confirm'), { target: { value: 'delete' } })
+    expect(submit).toBeDisabled()
+    fireEvent.change(within(dialog).getByLabelText('Your password'), { target: { value: 'secret123' } })
+    expect(submit).toBeEnabled()
+
+    fireEvent.click(submit)
+    await vi.waitFor(() => expect(mocks.deleteCurrentUser).toHaveBeenCalledOnce())
+    expect(mocks.reauthenticate).toHaveBeenCalledWith('secret123')
+    expect(mocks.deleteCloudData).toHaveBeenCalledWith('u1', expect.any(Function))
+    // Confirm identity first, then the cloud data, then the sign-in account.
+    expect(mocks.calls).toEqual(['reauthenticate', 'deleteCloudData', 'deleteCurrentUser'])
+  })
+
+  it('asks Google accounts to pick their account again and can clear this device', async () => {
+    const dialog = openDelete({ uid: 'g1', email: 'g@example.com', displayName: 'Sam', provider: 'google.com' })
+    expect(within(dialog).queryByLabelText('Your password')).not.toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('radio', { name: /remove it/i }))
+    fireEvent.change(within(dialog).getByLabelText('Type DELETE to confirm'), { target: { value: 'DELETE' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete my account' }))
+    await vi.waitFor(() => expect(mocks.deleteCurrentUser).toHaveBeenCalledOnce())
+    expect(mocks.reauthenticate).toHaveBeenCalledWith(undefined)
+    expect(mocks.calls).toEqual(['reauthenticate', 'deleteCloudData', 'clearLocalData', 'deleteCurrentUser'])
+  })
+
+  it('deletes nothing when confirming identity fails', async () => {
+    mocks.reauthenticate.mockRejectedValue(firebaseError('auth/invalid-credential'))
+    const dialog = openDelete()
+    fireEvent.change(within(dialog).getByLabelText('Type DELETE to confirm'), { target: { value: 'DELETE' } })
+    fireEvent.change(within(dialog).getByLabelText('Your password'), { target: { value: 'wrong' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete my account' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Email or password is wrong.')
+    expect(mocks.deleteCloudData).not.toHaveBeenCalled()
+    expect(mocks.deleteCurrentUser).not.toHaveBeenCalled()
   })
 })
