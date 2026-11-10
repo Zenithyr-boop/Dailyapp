@@ -222,14 +222,24 @@ function BrowseSections({ movements }: { movements: Movement[] }) {
   const rest = movements.filter((m) => !PICKS.has(m.id) && m.source !== 'custom')
   return (
     <>
-      <MovementList title="Coach's picks" movements={picks} />
+      <MovementList title="Coach's picks" movements={picks} hidePickTag />
       {custom.length > 0 && <MovementList title="Your movements" movements={custom} />}
       <MovementList title="All movements A–Z" movements={rest} paged />
     </>
   )
 }
 
-function MovementList({ title, movements, paged = false }: { title: string; movements: Movement[]; paged?: boolean }) {
+function MovementList({
+  title,
+  movements,
+  paged = false,
+  hidePickTag = false,
+}: {
+  title: string
+  movements: Movement[]
+  paged?: boolean
+  hidePickTag?: boolean
+}) {
   const [shown, setShown] = useState(PAGE)
   const visible = paged ? movements.slice(0, shown) : movements
   const left = movements.length - visible.length
@@ -238,7 +248,7 @@ function MovementList({ title, movements, paged = false }: { title: string; move
       <ul className="-mx-4 -my-4">
         {visible.map((m) => (
           <li key={m.id} className="border-b border-line-soft last:border-b-0">
-            <MovementRow movement={m} />
+            <MovementRow movement={m} showPickTag={!hidePickTag} />
           </li>
         ))}
       </ul>
@@ -251,7 +261,7 @@ function MovementList({ title, movements, paged = false }: { title: string; move
   )
 }
 
-function MovementRow({ movement: m }: { movement: Movement }) {
+function MovementRow({ movement: m, showPickTag }: { movement: Movement; showPickTag: boolean }) {
   const details = [m.primaryMuscles.map(label).join(', '), label(m.equipment)].filter(Boolean).join(' · ')
   return (
     <Link to={`/train/movements/${encodeURIComponent(m.id)}`} className="group flex min-h-touch items-center gap-3 px-4 py-2.5">
@@ -259,7 +269,7 @@ function MovementRow({ movement: m }: { movement: Movement }) {
         <span className="block font-semibold leading-snug group-hover:text-accent">{m.name}</span>
         <span className="mt-0.5 block truncate text-sm text-muted">{details}</span>
       </span>
-      {m.source === 'custom' ? <Tag>Custom</Tag> : PICKS.has(m.id) ? <Tag tone="accent">Pick</Tag> : null}
+      {m.source === 'custom' ? <Tag>Custom</Tag> : showPickTag && PICKS.has(m.id) ? <Tag tone="accent">Pick</Tag> : null}
       <ChevronRightIcon size={18} className="shrink-0 text-faint group-hover:text-accent" />
     </Link>
   )
