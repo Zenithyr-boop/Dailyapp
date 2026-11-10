@@ -6,18 +6,26 @@ import { PageHeader } from '../../components/PageHeader'
 import { Panel } from '../../components/Panel'
 import { AccountPanel } from './AccountPanel'
 import { DATASET_URL } from '../train/library/dataset'
-import { UnitToggle } from './UnitToggle'
+import { GoalsPanel } from './goals/GoalsPanel'
+import { HeightUnitToggle, UnitToggle } from './UnitToggle'
 
 export function ProfilePage() {
   return (
     <>
       <PageHeader title="Me" />
       <div className="space-y-4">
+        <GoalsPanel />
         <AccountPanel />
         <Panel title="Units">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-muted">Weights in kilograms or pounds. Rounded to real plate jumps.</p>
-            <UnitToggle />
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-muted">Weights in kilograms or pounds. Rounded to real plate jumps.</p>
+              <UnitToggle />
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line-soft pt-4">
+              <p className="text-muted">Height in centimetres, or feet and inches.</p>
+              <HeightUnitToggle />
+            </div>
           </div>
         </Panel>
         {/* On mobile these screens have no tab, so link them here. */}
@@ -39,7 +47,6 @@ export function ProfilePage() {
         <ComingSoon
           items={[
             'Profile, level and rank history',
-            'Goals: steps, sleep, water, calories, protein',
           ]}
         />
         <Panel title="About">

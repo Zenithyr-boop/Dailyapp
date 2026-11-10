@@ -13,14 +13,23 @@ import { SessionSummaryPage } from '../features/train/sessions/SessionSummaryPag
 import { FoodPage } from '../features/food/FoodPage'
 import { SquadPage } from '../features/squad/SquadPage'
 import { ProfilePage } from '../features/profile/ProfilePage'
+import { GoalsPage } from '../features/profile/goals/GoalsPage'
+import { OnboardingGate } from '../features/onboarding/OnboardingGate'
+import { OnboardingPage } from '../features/onboarding/OnboardingPage'
 import { BodyPage } from '../features/body/BodyPage'
 import { ProgramsPage } from '../features/programs/ProgramsPage'
 import { CommunityPage } from '../features/community/CommunityPage'
 
 export const router = createBrowserRouter([
+  // First-run flow: full screen, outside the app shell.
+  { path: '/welcome', element: <OnboardingPage /> },
   {
     path: '/',
-    element: <AppLayout />,
+    element: (
+      <OnboardingGate>
+        <AppLayout />
+      </OnboardingGate>
+    ),
     children: [
       { index: true, element: <Navigate to="/quests" replace /> },
       { path: 'quests', element: <QuestsPage /> },
@@ -37,6 +46,7 @@ export const router = createBrowserRouter([
       { path: 'food', element: <FoodPage /> },
       { path: 'squad', element: <SquadPage /> },
       { path: 'me', element: <ProfilePage /> },
+      { path: 'me/goals', element: <GoalsPage /> },
       { path: 'body', element: <BodyPage /> },
       { path: 'programs', element: <ProgramsPage /> },
       { path: 'community', element: <CommunityPage /> },

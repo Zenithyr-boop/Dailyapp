@@ -65,13 +65,15 @@ export function withAutoTargets(s: GoalSettings, year?: number): GoalSettings {
 export async function saveGoalSettings(s: GoalSettings, onboarding?: 'done' | 'skipped'): Promise<void> {
   await ensureSetup()
   const next = withAutoTargets(s)
-  const plan: GoalPlan = next.plan.goal === 'maintain' ? { goal: 'maintain', rateKgPerWeek: 0 } : next.plan
+  const body = compact(next.body)
+  // Only store what holds something, so skipping everything leaves the profile
+  // as it was (an untouched device simply takes the account's data on sign-in).
   await db.profile.update('me', {
     displayName: next.displayName.trim(),
     units: next.units,
-    heightUnits: next.heightUnits,
-    body: compact(next.body),
-    plan,
+    heightUnits: next.heightUnits === heightUnitsOf({ units: next.units }) ? undefined : next.heightUnits,
+    body: Object.keys(body).length ? body : undefined,
+    plan: next.plan.goal === 'maintain' ? undefined : next.plan,
     goals: compact(next.goals),
     ...(onboarding ? { onboarding } : {}),
   })
