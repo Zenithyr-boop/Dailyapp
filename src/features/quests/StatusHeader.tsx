@@ -1,25 +1,26 @@
 import { RankBadge } from '../../components/RankBadge'
 import { XpBar } from '../../components/XpBar'
-import type { Profile } from '../../lib/db'
-import { nextRank } from '../../lib/rank'
-import { levelFromTotalXp } from '../../lib/xp'
+import { nextRank, type Rank } from '../../lib/rank'
+import type { DerivedProgress } from '../../lib/xp'
 
 interface StatusHeaderProps {
-  profile: Profile
+  /** Earned rank (stored, never drops). */
+  rank: Rank
+  /** XP, level and streak derived from the day history. */
+  progress: DerivedProgress
   doneToday: number
   totalToday: number
 }
 
 /** Rank badge, level, 10-block XP bar and XP numbers; streak/today stats beside it. */
-export function StatusHeader({ profile, doneToday, totalToday }: StatusHeaderProps) {
-  const progress = levelFromTotalXp(profile.totalXp)
-  const next = nextRank(profile.rank, { level: progress.level })
+export function StatusHeader({ rank, progress, doneToday, totalToday }: StatusHeaderProps) {
+  const next = nextRank(rank, { level: progress.level })
   const nextHint = next?.trials.find((t) => !t.passed)
 
   return (
     <header className="flex flex-wrap items-center gap-x-10 gap-y-4">
       <div className="flex min-w-0 flex-[1_1_20rem] items-center gap-3.5">
-        <RankBadge rank={profile.rank} size="lg" />
+        <RankBadge rank={rank} size="lg" />
         <div className="min-w-0 flex-1">
           <XpBar current={progress.xpIntoLevel} max={progress.xpForLevel} label={`Level ${progress.level}`} size="lg" />
           {next && nextHint && (
@@ -33,8 +34,8 @@ export function StatusHeader({ profile, doneToday, totalToday }: StatusHeaderPro
         <div>
           <dt className="text-xs text-muted">Streak</dt>
           <dd className="font-display text-3xl font-bold leading-none tabular-nums md:text-5xl">
-            {profile.streak}
-            <span className="text-base text-muted md:text-xl"> {profile.streak === 1 ? 'day' : 'days'}</span>
+            {progress.streak}
+            <span className="text-base text-muted md:text-xl"> {progress.streak === 1 ? 'day' : 'days'}</span>
           </dd>
         </div>
         <div className="hidden md:block">

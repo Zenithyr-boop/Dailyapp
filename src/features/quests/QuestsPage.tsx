@@ -5,12 +5,12 @@ import { EditIcon } from '../../components/icons'
 import { QuestRow } from '../../components/QuestRow'
 import { db } from '../../lib/db'
 import { addDays, fromDayKey } from '../../lib/dates'
-import { ALL_QUESTS_BONUS } from '../../lib/xp'
+import { ALL_QUESTS_BONUS, progressFromDays } from '../../lib/xp'
 import { CountQuestRow } from './CountQuestRow'
 import { HistoryPanel } from './HistoryPanel'
 import { LevelUpDialog } from './LevelUpDialog'
 import { buildHistory } from './progress'
-import { dismissCelebration, ensureDay, ensureSetup, setQuestDone, stepCount } from './questsRepo'
+import { dismissCelebration, ensureDay, ensureSetup, getCelebration, setQuestDone, stepCount } from './questsRepo'
 import { StatusHeader } from './StatusHeader'
 import { useTodayKey } from './useTodayKey'
 
@@ -24,23 +24,24 @@ export function QuestsPage() {
   }, [today])
 
   const profile = useLiveQuery(() => db.profile.get('me'), [])
-  const day = useLiveQuery(() => db.days.get(today), [today])
-  const recent = useLiveQuery(
-    () => db.days.where('date').between(addDays(today, -29), today, true, true).toArray(),
-    [today],
-  )
-  const firstDate = useLiveQuery(() => db.days.orderBy('date').first().then((d) => d?.date), [])
+  // All days: XP, level and streak are worked out from the full history.
+  const days = useLiveQuery(() => db.days.orderBy('date').toArray(), [])
+  const celebration = useLiveQuery(getCelebration, [])
+  const day = days?.find((d) => d.date === today)
 
-  if (!profile || !day || !recent) {
+  if (!profile || !days || !day) {
     return <p className="text-muted">Loading quests…</p>
   }
 
+  const progress = progressFromDays(days, today)
+  const recent = days.filter((d) => d.date >= addDays(today, -29) && d.date <= today)
+  const firstDate = days[0]?.date
   const quests = day.quests
   const done = quests.filter((q) => q.done).length
 
   return (
     <div className="space-y-6">
-      <StatusHeader profile={profile} doneToday={done} totalToday={quests.length} />
+      <StatusHeader rank={profile.rank} progress={progress} doneToday={done} totalToday={quests.length} />
 
       <section aria-labelledby="quests-h" className="md:border md:border-panel-edge md:bg-panel md:px-6 md:pt-5 md:pb-3">
         <div className="flex items-end justify-between gap-4 border-b border-line pb-2.5">
@@ -95,10 +96,10 @@ export function QuestsPage() {
 
       <HistoryPanel cells={buildHistory(recent, today, 30, firstDate)} />
 
-      {profile.celebration && (
+      {celebration && (
         <LevelUpDialog
-          level={profile.celebration.level}
-          rank={profile.celebration.rank}
+          level={celebration.level}
+          rank={celebration.rank}
           currentRank={profile.rank}
           onClose={dismissCelebration}
         />
