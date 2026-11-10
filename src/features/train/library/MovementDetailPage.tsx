@@ -11,6 +11,7 @@ import { COACH_PICKS } from './coachPicks'
 import { deleteCustomMovement } from './customMovements'
 import { TRACKING_LABELS, type Movement } from './types'
 import { useMovements } from './useMovements'
+import { MovementHistory } from '../sessions/MovementHistory'
 
 const FRAME_LABELS = ['Start', 'End']
 
@@ -135,11 +136,7 @@ function MovementDetail({ movement: m }: { movement: Movement }) {
           </Panel>
         )}
 
-        <Panel title="Your history">
-          <p className="text-muted">
-            Nothing logged yet. Once you log this movement in a workout, your sets and personal records show up here.
-          </p>
-        </Panel>
+        <MovementHistory movement={m} />
 
         {m.source === 'custom' && (
           <div className="flex gap-2">

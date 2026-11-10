@@ -6,6 +6,7 @@ import { PageHeader } from '../../components/PageHeader'
 import { Panel } from '../../components/Panel'
 import { AccountPanel } from './AccountPanel'
 import { DATASET_URL } from '../train/library/dataset'
+import { UnitToggle } from './UnitToggle'
 
 export function ProfilePage() {
   return (
@@ -13,6 +14,12 @@ export function ProfilePage() {
       <PageHeader title="Me" />
       <div className="space-y-4">
         <AccountPanel />
+        <Panel title="Units">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-muted">Weights in kilograms or pounds. Rounded to real plate jumps.</p>
+            <UnitToggle />
+          </div>
+        </Panel>
         {/* On mobile these screens have no tab, so link them here. */}
         <Panel title="More" className="md:hidden">
           <ul className="-my-2">
@@ -32,7 +39,6 @@ export function ProfilePage() {
         <ComingSoon
           items={[
             'Profile, level and rank history',
-            'Units: metric / imperial',
             'Goals: steps, sleep, water, calories, protein',
           ]}
         />

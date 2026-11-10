@@ -21,13 +21,26 @@ interface MovementPickerProps {
   inWorkout: ReadonlySet<string>
   onAdd: (ids: string[]) => void
   onClose: () => void
+  /** Heading, "Add movements" by default. */
+  title?: string
+  /** Pick one movement: choosing it calls onAdd right away (used to swap). */
+  single?: boolean
 }
 
 /**
  * Full-screen picker over the builder: the library's search and filters,
  * tick one or more movements, add them in the order ticked.
  */
-export function MovementPicker({ movements, error, retry, inWorkout, onAdd, onClose }: MovementPickerProps) {
+export function MovementPicker({
+  movements,
+  error,
+  retry,
+  inWorkout,
+  onAdd,
+  onClose,
+  title = 'Add movements',
+  single = false,
+}: MovementPickerProps) {
   const titleId = useId()
   const boxRef = useRef<HTMLDivElement>(null)
   const search = useMovementSearch()
@@ -85,7 +98,7 @@ export function MovementPicker({ movements, error, retry, inWorkout, onAdd, onCl
       <div className="mx-auto w-full max-w-2xl px-4 pt-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pt-8">
         <header className="mb-4 flex items-center justify-between gap-3">
           <h2 id={titleId} className="text-3xl font-extrabold leading-none">
-            Add movements
+            {title}
           </h2>
           <button
             type="button"
@@ -129,7 +142,7 @@ export function MovementPicker({ movements, error, retry, inWorkout, onAdd, onCl
                         <input
                           type="checkbox"
                           checked={order >= 0}
-                          onChange={() => toggle(m.id)}
+                          onChange={() => (single ? onAdd([m.id]) : toggle(m.id))}
                           className="peer sr-only"
                         />
                         <span
@@ -171,9 +184,11 @@ export function MovementPicker({ movements, error, retry, inWorkout, onAdd, onCl
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
+          {!single && (
           <Button className="flex-1" disabled={picked.length === 0} onClick={() => onAdd(picked)}>
             {picked.length === 0 ? 'Tick movements to add' : `Add ${picked.length} movement${picked.length === 1 ? '' : 's'}`}
           </Button>
+          )}
         </div>
       </div>
     </div>

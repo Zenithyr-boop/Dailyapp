@@ -35,6 +35,8 @@ export function IconButton({
 /**
  * Number input that lets the user type freely (empty, "1" on the way to "12")
  * and clamps on blur. Reports `undefined` when cleared if `optional`.
+ * `live` (default) reports valid values while typing; otherwise only on blur
+ * or Enter (for values written straight to the database).
  */
 export function NumberField({
   id,
@@ -43,6 +45,9 @@ export function NumberField({
   min,
   max,
   optional = false,
+  precision = 0,
+  live = true,
+  placeholder,
   className = '',
   ...aria
 }: {
@@ -52,9 +57,15 @@ export function NumberField({
   min: number
   max: number
   optional?: boolean
+  /** Decimals allowed (0 = whole numbers). */
+  precision?: number
+  live?: boolean
+  placeholder?: string
   className?: string
   'aria-label'?: string
 }) {
+  const factor = 10 ** precision
+  const round = (n: number) => Math.round(n * factor) / factor
   const [text, setText] = useState(value === undefined ? '' : String(value))
   const [shown, setShown] = useState(value)
   if (value !== shown) {
@@ -69,7 +80,7 @@ export function NumberField({
       else setText(value === undefined ? '' : String(value))
       return
     }
-    const n = Math.round(Number(raw))
+    const n = round(Number(raw.replace(',', '.')))
     if (!Number.isFinite(n)) return setText(value === undefined ? '' : String(value))
     const clamped = Math.min(max, Math.max(min, n))
     setText(String(clamped))
@@ -79,21 +90,25 @@ export function NumberField({
   return (
     <input
       id={id}
-      type="number"
-      inputMode="numeric"
-      min={min}
-      max={max}
+      type="text"
+      inputMode={precision ? 'decimal' : 'numeric'}
+      autoComplete="off"
+      placeholder={placeholder}
       value={text}
       onChange={(e) => {
         setText(e.target.value)
-        const n = Number(e.target.value)
+        if (!live) return
+        const n = Number(e.target.value.replace(',', '.'))
         if (e.target.value.trim() !== '' && Number.isFinite(n) && n >= min && n <= max) {
-          setShown(Math.round(n))
-          onChange(Math.round(n))
+          setShown(round(n))
+          onChange(round(n))
         }
       }}
       onBlur={(e) => commit(e.target.value)}
-      className={`${inputClass} px-2 text-center font-display text-lg font-semibold tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${className}`}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') e.currentTarget.blur()
+      }}
+      className={`${inputClass} px-2 text-center font-display text-lg font-semibold tabular-nums ${className}`}
       {...aria}
     />
   )

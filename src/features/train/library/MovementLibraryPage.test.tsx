@@ -58,7 +58,7 @@ describe('movement library', { timeout: 15_000 }, () => {
     )
     expect(screen.getByText('Time')).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'How to do it' })).toBeInTheDocument()
-    expect(screen.getByText(/Nothing logged yet/)).toBeInTheDocument()
+    expect(await screen.findByText(/Nothing logged yet/)).toBeInTheDocument()
   })
 
   it('creates a custom movement that then shows in the library', async () => {

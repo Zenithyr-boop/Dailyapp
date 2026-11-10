@@ -12,6 +12,7 @@ import { LevelUpDialog } from './LevelUpDialog'
 import { buildHistory } from './progress'
 import { dismissCelebration, ensureDay, ensureSetup, getCelebration, setQuestDone, stepCount } from './questsRepo'
 import { StatusHeader } from './StatusHeader'
+import { ResumeBanner } from '../train/sessions/ResumeBanner'
 import { useTodayKey } from './useTodayKey'
 
 const dateLabel = new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
@@ -41,6 +42,7 @@ export function QuestsPage() {
 
   return (
     <div className="space-y-6">
+      <ResumeBanner />
       <StatusHeader rank={profile.rank} progress={progress} doneToday={done} totalToday={quests.length} />
 
       <section aria-labelledby="quests-h" className="md:border md:border-panel-edge md:bg-panel md:px-6 md:pt-5 md:pb-3">

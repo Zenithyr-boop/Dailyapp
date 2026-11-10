@@ -2,10 +2,11 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { Button } from '../../../components/Button'
-import { ChevronRightIcon, CopyIcon, PlusIcon, TrashIcon } from '../../../components/icons'
+import { ChevronRightIcon, CopyIcon, PlayIcon, PlusIcon, TrashIcon } from '../../../components/icons'
 import { Panel } from '../../../components/Panel'
 import type { WorkoutTemplate } from '../../../lib/db'
 import { Tag } from '../library/Chip'
+import { useStartSession } from '../sessions/useStartSession'
 import { estimateSeconds, formatDuration } from './duration'
 import { IconButton } from './fields'
 import { deleteWorkout, duplicateWorkout, listStoredWorkouts, restoreStarters, workoutLists } from './workoutsRepo'
@@ -15,6 +16,7 @@ export function WorkoutsSection() {
   const stored = useLiveQuery(listStoredWorkouts, [])
   const lists = useMemo(() => stored && workoutLists(stored), [stored])
   const [confirm, setConfirm] = useState<string | null>(null)
+  const { start, dialog } = useStartSession()
 
   if (!lists) {
     return (
@@ -32,6 +34,7 @@ export function WorkoutsSection() {
       workout={w}
       edited={edited}
       confirming={confirm === w.id}
+      onStart={() => start(w)}
       onAskDelete={() => setConfirm(w.id)}
       onCancelDelete={() => setConfirm(null)}
       onDelete={async () => {
@@ -55,10 +58,14 @@ export function WorkoutsSection() {
           </Link>
         }
       >
+        <Button variant="secondary" className="mb-4 w-full" onClick={() => start()}>
+          <PlayIcon size={18} />
+          Start empty session
+        </Button>
         {lists.yours.length === 0 ? (
           <p className="text-muted">None yet. Make a new one, or duplicate a starter template below and make it yours.</p>
         ) : (
-          <ul className="-mx-4 -my-4">{lists.yours.map((w) => row(w))}</ul>
+          <ul className="-mx-4 -mb-4 border-t border-line-soft">{lists.yours.map((w) => row(w))}</ul>
         )}
       </Panel>
 
@@ -83,6 +90,7 @@ export function WorkoutsSection() {
           )}
         </div>
       </Panel>
+      {dialog}
     </>
   )
 }
@@ -91,6 +99,7 @@ function WorkoutRow({
   workout: w,
   edited,
   confirming,
+  onStart,
   onAskDelete,
   onCancelDelete,
   onDelete,
@@ -98,6 +107,7 @@ function WorkoutRow({
   workout: WorkoutTemplate
   edited?: boolean
   confirming: boolean
+  onStart: () => void
   onAskDelete: () => void
   onCancelDelete: () => void
   onDelete: () => void
@@ -134,6 +144,9 @@ function WorkoutRow({
         </span>
         <ChevronRightIcon size={18} className="shrink-0 text-faint group-hover:text-accent" />
       </Link>
+      <IconButton label={`Start ${name}`} onClick={onStart}>
+        <PlayIcon size={18} />
+      </IconButton>
       <IconButton label={`Duplicate ${name}`} onClick={() => duplicateWorkout(w.id)}>
         <CopyIcon size={18} />
       </IconButton>
