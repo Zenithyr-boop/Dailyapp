@@ -107,10 +107,24 @@ Rules:
 - `users/{uid}/workouts/{id}` saved templates; `users/{uid}/sessions/{id}` logged sessions (sets: kg, reps, rpe)
 - `users/{uid}/food/{id}` food log entries with macros
 - `users/{uid}/programs/{id}` active program state (day N, strict mode)
-- `movements/{id}` shared exercise library (read-only for users)
+- `users/{uid}/movements/{id}` the user's custom movements (ids start with `custom-`)
+- The shared movement library is NOT in Firestore: it's bundled with the app (see "Movement library")
 - `squads/{id}` members, shared goal, progress; `community/{id}` public workout posts
 Firestore security rules: users can only read/write their own `users/{uid}` tree;
 squad data readable by members only; community posts readable by all signed-in users.
+
+## Movement library (`src/features/train/library`)
+- Source: free-exercise-db by yuhonas (Unlicense), credited in About on the Me screen. Pinned to one
+  commit in `dataset.ts`; `npm run import:exercises` rewrites `exercises.json` from it.
+- `exercises.json` is bundled and loaded on demand (own chunk, precached) — browsing costs no reads.
+  Movement ids are the dataset's ids and must never change: logged sets point at them.
+- Photos load from the repo's raw GitHub URLs only when a movement is opened; the service worker
+  caches them (`movement-photos`, CORS requests). No service worker in the APK, so photos need a connection there.
+- Editable by the coach: `trackingTypes.ts` (how each movement is logged: weight_reps, bodyweight_reps,
+  assisted, time, distance_time; the import keeps edits and only guesses new ones) and
+  `coachPicks.ts` (ids that show first and always rank first in search). Tests check every id exists.
+- Search (`search.ts`, unit-tested): typos, partial words, aliases (RDL, OHP, DB…). Ranking: coach's
+  picks, then custom movements, then the rest. Filters: muscle (primary only), equipment, category.
 
 ## Account sync (`src/lib/sync`)
 - Dexie is the source of truth on the device; Firestore is the cloud copy. Signed out = local only.

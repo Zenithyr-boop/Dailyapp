@@ -4,6 +4,9 @@ import { NotFoundPage } from './NotFoundPage'
 import { QuestsPage } from '../features/quests/QuestsPage'
 import { EditQuestsPage } from '../features/quests/EditQuestsPage'
 import { TrainPage } from '../features/train/TrainPage'
+import { MovementLibraryPage } from '../features/train/library/MovementLibraryPage'
+import { MovementDetailPage } from '../features/train/library/MovementDetailPage'
+import { MovementFormPage } from '../features/train/library/MovementFormPage'
 import { FoodPage } from '../features/food/FoodPage'
 import { SquadPage } from '../features/squad/SquadPage'
 import { ProfilePage } from '../features/profile/ProfilePage'
@@ -20,6 +23,10 @@ export const router = createBrowserRouter([
       { path: 'quests', element: <QuestsPage /> },
       { path: 'quests/edit', element: <EditQuestsPage /> },
       { path: 'train', element: <TrainPage /> },
+      { path: 'train/movements', element: <MovementLibraryPage /> },
+      { path: 'train/movements/new', element: <MovementFormPage /> },
+      { path: 'train/movements/:id', element: <MovementDetailPage /> },
+      { path: 'train/movements/:id/edit', element: <MovementFormPage /> },
       { path: 'food', element: <FoodPage /> },
       { path: 'squad', element: <SquadPage /> },
       { path: 'me', element: <ProfilePage /> },

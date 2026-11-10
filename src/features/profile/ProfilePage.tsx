@@ -5,6 +5,7 @@ import { ComingSoon } from '../../components/ComingSoon'
 import { PageHeader } from '../../components/PageHeader'
 import { Panel } from '../../components/Panel'
 import { AccountPanel } from './AccountPanel'
+import { DATASET_URL } from '../train/library/dataset'
 
 export function ProfilePage() {
   return (
@@ -33,9 +34,21 @@ export function ProfilePage() {
             'Profile, level and rank history',
             'Units: metric / imperial',
             'Goals: steps, sleep, water, calories, protein',
-            'Sync across devices when signed in',
           ]}
         />
+        <Panel title="About">
+          <p className="text-muted">
+            FromZero is free, built by a personal trainer. The core app stays free forever.
+          </p>
+          <h3 className="label mt-4">Credits</h3>
+          <p className="mt-1 text-muted">
+            Exercise data and photos:{' '}
+            <a href={DATASET_URL} target="_blank" rel="noreferrer" className="text-accent underline underline-offset-2 hover:text-text">
+              free-exercise-db
+            </a>{' '}
+            by yuhonas, released into the public domain (Unlicense).
+          </p>
+        </Panel>
       </div>
     </>
   )
