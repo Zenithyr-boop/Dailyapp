@@ -1,5 +1,5 @@
 import { db } from '../../lib/db'
-import { totalXpForLevel } from '../../lib/xp'
+import { progressFromDays, totalXpForLevel } from '../../lib/xp'
 import {
   addQuest,
   deleteQuest,
@@ -8,7 +8,8 @@ import {
   ensureSetup,
   listQuestDefs,
   moveQuest,
-  recomputeProgress,
+  checkMilestones,
+  getCelebration,
   setQuestDone,
   stepCount,
   updateQuest,
@@ -16,6 +17,10 @@ import {
 
 function setToday(isoLocal: string) {
   vi.setSystemTime(new Date(isoLocal))
+}
+
+async function progress(today = '2026-11-09') {
+  return progressFromDays(await db.days.toArray(), today)
 }
 
 async function finishAll(date: string) {
@@ -70,9 +75,7 @@ describe('days', () => {
   it('gives quest XP plus the +80 bonus for a full day, and a streak', async () => {
     await ensureDay('2026-11-09')
     await finishAll('2026-11-09')
-    const profile = await db.profile.get('me')
-    expect(profile?.totalXp).toBe(320 + 80)
-    expect(profile?.streak).toBe(1)
+    expect(await progress()).toMatchObject({ totalXp: 320 + 80, streak: 1 })
   })
 
   it('takes XP back when a quest is unchecked', async () => {
@@ -80,7 +83,7 @@ describe('days', () => {
     await finishAll('2026-11-09')
     const first = (await db.days.get('2026-11-09'))!.quests[0]!
     await setQuestDone('2026-11-09', first.id, false)
-    expect((await db.profile.get('me'))?.totalXp).toBe(320 - 120)
+    expect((await progress()).totalXp).toBe(320 - 120)
   })
 
   it('resets the streak after a missed day', async () => {
@@ -88,7 +91,7 @@ describe('days', () => {
     await finishAll('2026-11-09')
     setToday('2026-11-11T08:00:00') // the 10th was skipped
     await ensureDay('2026-11-11')
-    expect((await db.profile.get('me'))?.streak).toBe(0)
+    expect((await progress('2026-11-11')).streak).toBe(0)
   })
 })
 
@@ -135,11 +138,36 @@ describe('editing quests', () => {
     expect((await listQuestDefs())[0]!.id).toBe(top!.id)
   })
 
-  it('removes deleted quests from today', async () => {
+  it('removes deleted quests from today and keeps a tombstone for sync', async () => {
     await ensureDay('2026-11-09')
     const [first] = await listQuestDefs()
     await deleteQuest(first!.id)
     expect((await db.days.get('2026-11-09'))!.quests).toHaveLength(5)
+    expect(await listQuestDefs()).toHaveLength(5)
+    expect(await db.quests.get(first!.id)).toMatchObject({ deleted: 1, dirty: 1 })
+  })
+})
+
+describe('sync flags', () => {
+  it('flags every local change for upload and stamps updatedAt', async () => {
+    await ensureDay('2026-11-09')
+    const before = (await db.days.get('2026-11-09'))!
+    expect(before.dirty).toBe(1)
+    await db.days.update('2026-11-09', { dirty: 0 }) // pretend it was uploaded… but a local write re-flags it
+    expect((await db.days.get('2026-11-09'))!.dirty).toBe(1)
+    setToday('2026-11-09T10:00:00')
+    await setQuestDone('2026-11-09', before.quests[0]!.id, true)
+    const after = (await db.days.get('2026-11-09'))!
+    expect(after).toMatchObject({ dirty: 1, updatedAt: new Date('2026-11-09T10:00:00').getTime() })
+  })
+
+  it('does not write the profile on a normal quest tick', async () => {
+    await ensureDay('2026-11-09')
+    const stamp = (await db.profile.get('me'))!.updatedAt
+    setToday('2026-11-09T11:00:00')
+    const q = (await db.days.get('2026-11-09'))!.quests[1]!
+    await setQuestDone('2026-11-09', q.id, true)
+    expect((await db.profile.get('me'))!.updatedAt).toBe(stamp)
   })
 })
 
@@ -151,20 +179,20 @@ describe('level-up moments', () => {
       quests: [{ id: 'old', title: 'Old', xp: totalXpForLevel(5) - 100, kind: 'check', done: true }],
       updatedAt: 0,
     })
-    await recomputeProgress()
+    await checkMilestones()
     await dismissCelebration()
     await ensureDay('2026-11-09')
     const train = (await db.days.get('2026-11-09'))!.quests[0]!
     await setQuestDone('2026-11-09', train.id, true)
 
-    let profile = await db.profile.get('me')
-    expect(profile).toMatchObject({ level: 5, rank: 'D', celebration: { level: 5, rank: 'D' } })
+    expect((await progress()).level).toBe(5)
+    expect(await db.profile.get('me')).toMatchObject({ bestLevel: 5, rank: 'D' })
+    expect(await getCelebration()).toEqual({ level: 5, rank: 'D' })
 
     await dismissCelebration()
     await setQuestDone('2026-11-09', train.id, false)
     await setQuestDone('2026-11-09', train.id, true)
-    profile = await db.profile.get('me')
-    expect(profile?.celebration).toBeUndefined()
-    expect(profile?.rank).toBe('D')
+    expect(await getCelebration()).toBeUndefined()
+    expect((await db.profile.get('me'))?.rank).toBe('D')
   })
 })

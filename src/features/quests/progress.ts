@@ -34,7 +34,7 @@ export function mergeQuests(existing: readonly Quest[], defs: readonly QuestDef[
     const prev = byId.get(def.id)
     if (!prev || prev.kind !== def.kind) return fresh
     const merged: Quest = def.kind === 'count' ? { ...fresh, value: prev.value ?? 0 } : { ...fresh, done: prev.done }
-    return { ...merged, done: isQuestDone(merged) }
+    return { ...merged, done: isQuestDone(merged), ...(prev.at ? { at: prev.at } : {}) }
   })
 }
 
@@ -45,24 +45,8 @@ export function addToCount(q: Quest, delta: number): Quest {
   return { ...next, done: isQuestDone(next) }
 }
 
-/**
- * Consecutive days with every quest finished, ending today if today is already
- * complete, otherwise ending yesterday (today is still in progress).
- * A missed or incomplete day breaks it.
- */
-export function computeStreak(completeDates: ReadonlySet<string>, today: string): number {
-  let key = completeDates.has(today) ? today : addDays(today, -1)
-  let streak = 0
-  while (completeDates.has(key)) {
-    streak++
-    key = addDays(key, -1)
-  }
-  return streak
-}
-
-export function completeDateSet(days: readonly Day[]): Set<string> {
-  return new Set(days.filter((d) => isDayComplete(d.quests)).map((d) => d.date))
-}
+/** Streak math lives in `lib/xp.ts` with the rest of the progression numbers. */
+export { completeDateSet, computeStreak } from '../../lib/xp'
 
 export type HistoryStatus = 'full' | 'partial' | 'missed' | 'before-start'
 

@@ -53,10 +53,14 @@ export function getFirebaseAuth(): Promise<Auth> {
   return authPromise
 }
 
-/** Cloud Firestore. Not used yet; syncing comes in a later feature. */
+/**
+ * Cloud Firestore, used only by account sync (`lib/sync`). Memory cache only:
+ * Dexie is the offline store, so Firestore doesn't keep a second copy on disk.
+ */
 export function getFirestoreDb(): Promise<Firestore> {
-  firestorePromise ??= Promise.all([getFirebaseApp(), import('firebase/firestore')]).then(([app, { getFirestore }]) =>
-    getFirestore(app),
+  firestorePromise ??= Promise.all([getFirebaseApp(), import('firebase/firestore')]).then(
+    ([app, { initializeFirestore, memoryLocalCache }]) =>
+      initializeFirestore(app, { localCache: memoryLocalCache(), ignoreUndefinedProperties: true }),
   )
   return firestorePromise
 }

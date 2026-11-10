@@ -15,13 +15,23 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
+    // Every synced write must carry the server's own timestamp in `syncedAt`.
+    // The app's download listeners use it as their cursor, so a device with a
+    // wrong clock can't make other devices miss a change.
+    function stampedByServer() {
+      return request.resource.data.syncedAt == request.time;
+    }
+
     // ---- Private data: each user reads and writes only their own tree ----
-    // users/{uid}, plus quests, days, workouts, sessions, food, programs under it.
+    // users/{uid} (profile), plus quests, days, workouts, sessions, food,
+    // programs under it. Delete is allowed for "Delete my account".
     match /users/{uid} {
-      allow read, write: if isUser(uid);
+      allow read, delete: if isUser(uid);
+      allow create, update: if isUser(uid) && stampedByServer();
 
       match /{document=**} {
-        allow read, write: if isUser(uid);
+        allow read, delete: if isUser(uid);
+        allow create, update: if isUser(uid) && stampedByServer();
       }
     }
 

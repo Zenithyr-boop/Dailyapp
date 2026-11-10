@@ -11,6 +11,8 @@
  *   Level 35 ≈ 221 (7 months), Level 50 ≈ 580 (19 months).
  */
 
+import { addDays } from './dates'
+
 export const BASE_XP = 850
 export const GROWTH = 1.06
 /** Bonus for finishing every quest of the day. */
@@ -101,4 +103,42 @@ export function dayXp(quests: ReadonlyArray<{ xp: number; done: boolean }>): num
 /** A day is complete when it has quests and every one is done. */
 export function isDayComplete(quests: ReadonlyArray<{ done: boolean }>): boolean {
   return quests.length > 0 && quests.every((q) => q.done)
+}
+
+/**
+ * Consecutive days with every quest finished, ending today if today is already
+ * complete, otherwise ending yesterday (today is still in progress).
+ * A missed or incomplete day breaks it.
+ */
+export function computeStreak(completeDates: ReadonlySet<string>, today: string): number {
+  let key = completeDates.has(today) ? today : addDays(today, -1)
+  let streak = 0
+  while (completeDates.has(key)) {
+    streak++
+    key = addDays(key, -1)
+  }
+  return streak
+}
+
+export function completeDateSet(days: ReadonlyArray<{ date: string; quests: ReadonlyArray<{ done: boolean }> }>): Set<string> {
+  return new Set(days.filter((d) => isDayComplete(d.quests)).map((d) => d.date))
+}
+
+export interface DerivedProgress extends LevelProgress {
+  totalXp: number
+  streak: number
+}
+
+/**
+ * XP, level and streak, worked out from the day history every time.
+ * Nothing here is stored or synced, so two devices that hold the same days
+ * always show the same numbers. Deleted (tombstoned) days don't count.
+ */
+export function progressFromDays(
+  days: ReadonlyArray<{ date: string; quests: ReadonlyArray<{ xp: number; done: boolean }>; deleted?: 1 }>,
+  today: string,
+): DerivedProgress {
+  const live = days.filter((d) => !d.deleted)
+  const totalXp = live.reduce((sum, d) => sum + dayXp(d.quests), 0)
+  return { ...levelFromTotalXp(totalXp), totalXp, streak: computeStreak(completeDateSet(live), today) }
 }
