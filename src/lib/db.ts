@@ -5,6 +5,7 @@
  * Weights are stored in kg; dates as local `YYYY-MM-DD` keys.
  */
 import Dexie, { type EntityTable, type Transaction } from 'dexie'
+import type { TrackingType } from '../features/train/library/types'
 import type { Rank } from './rank'
 import type { UnitSystem } from './units'
 
@@ -127,6 +128,22 @@ export interface ProgramState extends SyncFields {
   strict: boolean
 }
 
+/**
+ * A movement the user made themselves. The shared library is bundled with the
+ * app (`features/train/library`), so only these live in Dexie / Firestore.
+ * Ids start with `custom-` so they never collide with library ids.
+ */
+export interface CustomMovement extends SyncFields {
+  id: string
+  name: string
+  primaryMuscles: string[]
+  secondaryMuscles: string[]
+  equipment: string
+  category: string
+  tracking: TrackingType
+  instructions: string[]
+}
+
 /** Device-only key/value data (sync cursors, pending celebration). Never synced. */
 export interface MetaEntry {
   key: string
@@ -141,6 +158,7 @@ export type FromZeroDB = Dexie & {
   sessions: EntityTable<Session, 'id'>
   food: EntityTable<FoodEntry, 'id'>
   programs: EntityTable<ProgramState, 'id'>
+  movements: EntityTable<CustomMovement, 'id'>
   meta: EntityTable<MetaEntry, 'key'>
 }
 
@@ -186,8 +204,13 @@ db.version(3)
       })
   })
 
+// v4: the user's custom movements (the shared library is bundled, not stored).
+db.version(4).stores({
+  movements: 'id, dirty',
+})
+
 /** Tables that sync to Firestore. */
-export const SYNCED_TABLES = ['profile', 'quests', 'days', 'workouts', 'sessions', 'food', 'programs'] as const
+export const SYNCED_TABLES = ['profile', 'quests', 'days', 'workouts', 'sessions', 'food', 'programs', 'movements'] as const
 export type SyncedTable = (typeof SYNCED_TABLES)[number]
 /** Any record of a synced table (Dexie hands these back untyped). */
 export type SyncedRecord = SyncFields
