@@ -154,6 +154,38 @@ export async function deleteQuest(id: string): Promise<void> {
   await syncToday()
 }
 
+const sameQuestName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
+
+/**
+ * Make the quest list exactly `chosen`, in that order (onboarding's starter
+ * quests). Quests already in the list with the same title and type keep their
+ * id, so today's progress on them stays; the rest are deleted (tombstones).
+ */
+export async function setQuestList(chosen: readonly QuestFields[]): Promise<void> {
+  await ensureSetup()
+  await db.transaction('rw', db.quests, async () => {
+    const defs = await listQuestDefs()
+    const unused = [...defs]
+    const now = Date.now()
+    const next: QuestDef[] = chosen.map((raw, order) => {
+      const fields = normalizeFields(raw)
+      const i = unused.findIndex((d) => d.kind === fields.kind && sameQuestName(d.title, fields.title))
+      const match = i >= 0 ? unused.splice(i, 1)[0] : undefined
+      return { ...fields, id: match?.id ?? newId(), order, updatedAt: now }
+    })
+    const before = new Map(defs.map((d) => [d.id, d]))
+    const keys = ['title', 'xp', 'kind', 'target', 'unit', 'step', 'order'] as const
+    // Only write quests that are new or changed (fewer uploads).
+    const changed = next.filter((q) => {
+      const old = before.get(q.id)
+      return !old || keys.some((k) => old[k] !== q[k])
+    })
+    if (changed.length) await db.quests.bulkPut(changed)
+    for (const d of unused) await db.quests.update(d.id, { deleted: 1 })
+  })
+  await syncToday()
+}
+
 /** Move a quest one place up (-1) or down (1). */
 export async function moveQuest(id: string, direction: -1 | 1): Promise<void> {
   await db.transaction('rw', db.quests, async () => {

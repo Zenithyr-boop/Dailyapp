@@ -218,6 +218,9 @@ describe('first sign-in helpers', () => {
     expect(isPristine({ ...fresh, days: [day(1, [check('a', true)])] }, DEFAULTS)).toBe(false)
     expect(isPristine({ ...fresh, quests: [quests[0]!] }, DEFAULTS)).toBe(false)
     expect(isPristine({ ...fresh, profile: profile({ units: 'imperial' }) }, DEFAULTS)).toBe(false)
+    expect(isPristine({ ...fresh, profile: profile({ body: { weightKg: 80 } }) }, DEFAULTS)).toBe(false)
+    // Skipping onboarding leaves the device untouched.
+    expect(isPristine({ ...fresh, profile: profile({ onboarding: 'skipped' }) }, DEFAULTS)).toBe(true)
     expect(isPristine({ ...fresh, days: [day(1, [], { weightKg: 80 })] }, DEFAULTS)).toBe(false)
     expect(isPristine({ ...fresh, otherRecords: 1 }, DEFAULTS)).toBe(false)
   })

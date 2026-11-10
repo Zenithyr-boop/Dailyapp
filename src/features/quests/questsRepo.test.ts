@@ -11,6 +11,7 @@ import {
   checkMilestones,
   getCelebration,
   setQuestDone,
+  setQuestList,
   stepCount,
   updateQuest,
 } from './questsRepo'
@@ -194,5 +195,30 @@ describe('level-up moments', () => {
     await setQuestDone('2026-11-09', train.id, true)
     expect(await getCelebration()).toBeUndefined()
     expect((await db.profile.get('me'))?.rank).toBe('D')
+  })
+})
+
+describe('setQuestList (onboarding starter quests)', () => {
+  it('keeps matching quests (and today’s ticks), adds new ones and deletes the rest', async () => {
+    await ensureDay('2026-11-09')
+    const before = await listQuestDefs()
+    const train = before.find((q) => q.title === 'Train')!
+    await setQuestDone('2026-11-09', train.id, true)
+
+    await setQuestList([
+      { title: 'Drink 3 L water', xp: 30, kind: 'count', target: 3, unit: 'L', step: 0.25 },
+      { title: 'Train', xp: 120, kind: 'check' },
+    ])
+
+    const after = await listQuestDefs()
+    expect(after.map((q) => q.title)).toEqual(['Drink 3 L water', 'Train'])
+    expect(after.map((q) => q.order)).toEqual([0, 1])
+    expect(after[1]!.id).toBe(train.id)
+    expect((await db.quests.toArray()).filter((q) => q.deleted)).toHaveLength(5)
+    const today = await db.days.get('2026-11-09')
+    expect(today!.quests.map((q) => [q.title, q.done])).toEqual([
+      ['Drink 3 L water', false],
+      ['Train', true],
+    ])
   })
 })

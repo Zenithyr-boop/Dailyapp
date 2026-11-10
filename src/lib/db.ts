@@ -5,9 +5,10 @@
  * Weights are stored in kg; dates as local `YYYY-MM-DD` keys.
  */
 import Dexie, { type EntityTable, type Transaction } from 'dexie'
+import type { BodyStats, GoalPlan } from '../features/profile/goals/targets'
 import type { TrackingType } from '../features/train/library/types'
 import type { Rank } from './rank'
-import type { UnitSystem } from './units'
+import type { HeightUnits, UnitSystem } from './units'
 
 /**
  * Fields every synced record carries. `updatedAt` and `dirty` are set by the
@@ -31,7 +32,16 @@ export interface SyncFields {
 export interface Profile extends SyncFields {
   id: 'me'
   displayName: string
+  /** Weight unit (kg / lb). */
   units: UnitSystem
+  /** Height unit; unset = follows `units` (see `heightUnitsOf`). */
+  heightUnits?: HeightUnits
+  /** First-run flow finished or skipped. Unset = show it (new users only; see v6 below). */
+  onboarding?: 'done' | 'skipped'
+  /** Sex, birth year, height, weight (kg), activity: the inputs for calorie targets. */
+  body?: BodyStats
+  /** Lose / maintain / gain and the weekly rate (kg). */
+  plan?: GoalPlan
   /** Highest rank earned. Never drops; devices merge it with max. */
   rank: Rank
   /** Highest level already celebrated, so a level-up shows only once. Merged with max. */
@@ -40,8 +50,13 @@ export interface Profile extends SyncFields {
     steps?: number
     sleepHours?: number
     waterMl?: number
+    /** Daily calorie and macro targets (calculated, or the user's own numbers). */
     kcal?: number
     proteinG?: number
+    fatG?: number
+    carbsG?: number
+    /** 'auto' = calculated from body + plan on every save; 'custom' = the user's own numbers. */
+    macroMode?: 'auto' | 'custom'
   }
 }
 
@@ -275,6 +290,23 @@ db.version(4).stores({
 db.version(5).stores({
   sessions: 'id, date, templateId, startedAt, dirty',
 })
+
+// v6: first-run onboarding. Profiles that already exist belong to people who
+// used the app before it had onboarding: mark them done so they never see it,
+// and flag the change for upload so their other devices skip it too.
+db.version(6)
+  .stores({})
+  .upgrade(async (tx) => {
+    await tx
+      .table('profile')
+      .toCollection()
+      .modify((p: Profile) => {
+        if (p.onboarding) return
+        p.onboarding = 'done'
+        p.updatedAt = Date.now()
+        p.dirty = 1
+      })
+  })
 
 /** Tables that sync to Firestore. */
 export const SYNCED_TABLES = ['profile', 'quests', 'days', 'workouts', 'sessions', 'food', 'programs', 'movements'] as const
