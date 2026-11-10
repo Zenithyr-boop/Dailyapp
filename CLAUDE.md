@@ -99,7 +99,8 @@ Rules:
   Only the level trial exists so far; Train/Body/Food add theirs.
 
 ## Data model (Firestore, mirrors local Dexie tables)
-- `users/{uid}` profile, units (metric/imperial), goals, level, xp, rank
+- `users/{uid}` profile: units (metric/imperial), goals, earned rank and best level (both only go up).
+  XP, level and streak are never stored: they're derived from the days (`progressFromDays` in `lib/xp.ts`).
 - `users/{uid}/quests/{id}` the user's quest list (title, xp, type, target/unit/step, order)
 - `users/{uid}/days/{YYYY-MM-DD}` a copy of that day's quests + progress, steps, sleep, weight, water
   (edits to quests apply to today; past days stay frozen)
@@ -110,6 +111,21 @@ Rules:
 - `squads/{id}` members, shared goal, progress; `community/{id}` public workout posts
 Firestore security rules: users can only read/write their own `users/{uid}` tree;
 squad data readable by members only; community posts readable by all signed-in users.
+
+## Account sync (`src/lib/sync`)
+- Dexie is the source of truth on the device; Firestore is the cloud copy. Signed out = local only.
+- Every synced record has `updatedAt` and a `dirty` flag, set by Dexie hooks in `lib/db.ts` on
+  every local write. Deletes are tombstones (`deleted: 1`), never hard deletes.
+  Engine writes (applying cloud data) go through `runAsSync` so they aren't re-flagged.
+- Uploads: debounced 2 s, batched, wait while offline. Each doc gets `syncedAt` = server time
+  (rules enforce it); listeners pull only docs with `syncedAt` after the stored cursor.
+- Merge rules live in `lib/sync/merge.ts` (unit-tested): newer `updatedAt` wins; day quests merge
+  quest by quest using each quest's `at` time, and when both devices had unsent changes a quest
+  checked on either counts as checked (count quests keep the max); rank/best level take the max.
+- First sign-in on a device: empty account → upload all; untouched device → take the account's
+  data; otherwise match starter quests by name+type, then merge. Never drop user data silently.
+- Firestore reads/writes are counted per day on the device (`lib/sync/usage.ts`, shown on Me).
+- Firestore has no local emulator here (needs Java); test sync with two browsers on a PR preview.
 
 ## How I work (important)
 - I use only the Claude desktop app's Code tab. I never type in a terminal.
