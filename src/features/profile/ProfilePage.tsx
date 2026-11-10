@@ -61,6 +61,24 @@ export function ProfilePage() {
             </a>{' '}
             by yuhonas, released into the public domain (Unlicense).
           </p>
+          <p className="mt-2 text-muted">
+            Whole foods:{' '}
+            <a href="https://fdc.nal.usda.gov/" target="_blank" rel="noreferrer" className="text-accent underline underline-offset-2 hover:text-text">
+              USDA FoodData Central
+            </a>{' '}
+            (public domain).
+          </p>
+          <p className="mt-2 text-muted">
+            Packaged foods and barcodes:{' '}
+            <a href="https://world.openfoodfacts.org/" target="_blank" rel="noreferrer" className="text-accent underline underline-offset-2 hover:text-text">
+              Open Food Facts
+            </a>
+            , available under the{' '}
+            <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noreferrer" className="text-accent underline underline-offset-2 hover:text-text">
+              Open Database License
+            </a>
+            .
+          </p>
         </Panel>
       </div>
     </>

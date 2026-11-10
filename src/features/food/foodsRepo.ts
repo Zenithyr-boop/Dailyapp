@@ -11,7 +11,7 @@ import { db, type CustomFood, type FavoriteFood, type MealSlot, type Per100, typ
 import { ensureSetup } from '../quests/questsRepo'
 import { logPortions, portionOfEntry } from './foodLogRepo'
 import { getUsdaFood } from './library/catalog'
-import { MEAL_NAME_MAX, snapshotOf, type Food } from './nutrition'
+import { MEAL_NAME_MAX, portionOf, snapshotOf, type Food } from './nutrition'
 import { cleanBarcode, fetchProduct, getCachedProduct, OFF_PREFIX } from './off'
 
 export const CUSTOM_FOOD_PREFIX = 'custom-'
@@ -89,6 +89,31 @@ export async function updateCustomFood(id: string, fields: CustomFoodFields): Pr
   await db.foods.put({ ...normalizeCustomFood(fields), id, updatedAt: Date.now() })
 }
 
+/**
+ * After the user completes a product's missing nutrition: log entries of that
+ * product that were missing values now use their copy (same amounts, new totals).
+ * Returns how many entries changed.
+ */
+export async function applyFixToEntries(barcode: string, fixedId: string): Promise<number> {
+  const fixed = await getCustomFood(fixedId)
+  if (!fixed) return 0
+  const food = customToFood(fixed)
+  const productId = `${OFF_PREFIX}${barcode}`
+  const rows = await db.food.filter((e) => !e.deleted && e.foodId === productId && !!e.missing?.length).toArray()
+  for (const e of rows) {
+    const amount = e.servings !== undefined && e.serving ? { servings: e.servings, serving: e.serving } : { grams: e.grams ?? 100 }
+    await db.food.put({
+      ...portionOf(food, amount),
+      id: e.id,
+      date: e.date,
+      meal: e.meal,
+      loggedAt: e.loggedAt,
+      updatedAt: Date.now(),
+    })
+  }
+  return rows.length
+}
+
 export async function deleteCustomFood(id: string): Promise<void> {
   await db.foods.update(id, { deleted: 1 })
 }
@@ -114,7 +139,8 @@ export async function getFood(id: string): Promise<Food | undefined> {
     const c = await getCustomFood(id)
     food = c && customToFood(c)
   } else if (id.startsWith(OFF_PREFIX)) {
-    food = await getCachedProduct(id)
+    // The user's completed copy of this product wins over the original.
+    food = (await customForBarcode(id.slice(OFF_PREFIX.length))) ?? (await getCachedProduct(id))
   } else {
     food = await getUsdaFood(id)
   }

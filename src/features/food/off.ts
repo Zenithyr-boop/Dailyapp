@@ -44,7 +44,7 @@ const TIMEOUT_MS = 15_000
 const SEARCH_PAGE_SIZE = 24
 
 function onStaging(): boolean {
-  const server = import.meta.env.VITE_OFF_SERVER as string | undefined
+  const server = import.meta.env.VITE_OFF_SERVER
   if (server === 'staging') return true
   if (server === 'production') return false
   return import.meta.env.DEV && import.meta.env.MODE !== 'test'

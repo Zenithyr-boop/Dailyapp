@@ -10,6 +10,8 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_MEASUREMENT_ID?: string
   /** Set only by `npm run dev:emulator`: use the local Auth emulator instead of the real project. */
   readonly VITE_FIREBASE_AUTH_EMULATOR_URL?: string
+  /** Open Food Facts server: "staging" (default in dev) or "production" (default in builds). */
+  readonly VITE_OFF_SERVER?: "staging" | "production"
 }
 
 interface ImportMeta {

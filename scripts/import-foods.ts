@@ -63,7 +63,8 @@ const SKIP = /^(oz|lb|g|kg|fl oz|ounces?)\b|package|yield|quart|pint|gallon|bunc
 const PREFERRED = [/\bmedium\b/i, /\blarge\b/i, /\bsmall\b/i, /serving|slice|piece|fillet|breast|link|patty|scoop/i, /tbsp|tsp/i, /cup/i]
 const rank = (text: string) => {
   const i = PREFERRED.findIndex((re) => re.test(text))
-  return i === -1 ? PREFERRED.length : i
+  // "extra large" / "extra small" after the plain sizes.
+  return (i === -1 ? PREFERRED.length : i) + (/\bextra\b/i.test(text) ? 3 : 0)
 }
 
 /** USDA portions → clean serving labels ("1 large", "1 cup, chopped"), at most four. */

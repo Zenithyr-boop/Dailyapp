@@ -25,7 +25,8 @@ It ships as:
 - Data: local-first. Everything works without an account (IndexedDB via Dexie).
   Signing in syncs to Firebase (Auth + Cloud Firestore), staying inside the free Spark plan.
 - Android: Capacitor 8; health data via `@capgo/capacitor-health` (Health Connect)
-- Food data: Open Food Facts API (free, barcode lookup)
+- Food data: bundled USDA FoodData Central whole foods + Open Food Facts API (packaged foods, barcodes);
+  barcode scanning with BarcodeDetector, `@zxing/browser` as the fallback (see "Food logging")
 - Hosting: Firebase Hosting, deployed by GitHub Actions (`FirebaseExtended/action-hosting-deploy@v0`)
   on every push to `main`, using the repo secret `FIREBASE_SERVICE_ACCOUNT`. Pull requests get
   preview channels. Nobody runs `firebase login` or `firebase deploy` by hand.
@@ -40,6 +41,8 @@ It ships as:
 - `npm run emulators` + `npm run dev:emulator` — local Firebase Auth emulator (port 9099) and a
   dev server on 5174 that signs in against it with fake accounts (launch configs `auth-emulator`,
   `fromzero-dev-emulator`). Use these to test sign-in; never create test accounts in the real project.
+- `npm run import:foods` — rebuild `features/food/library/foods.json` from `foodList.ts` (FDC API with
+  `FDC_API_KEY` or DEMO_KEY; `-- --file <SR Legacy JSON>` reads the USDA download instead)
 - `npx cap sync android` — copy the web build into the Android project
 - `npx cap open android` — open in Android Studio to build the APK
 
@@ -102,14 +105,19 @@ Rules:
 - `users/{uid}` profile: display name, units (metric/imperial) and `heightUnits` (cm/ftin, unset = follows units),
   `onboarding` (done/skipped), `body` (sex, birth year, height cm, weight kg, activity), `plan` (lose/gain + kg per
   week; unset = maintain), `goals` (kcal, protein/fat/carbs g, `macroMode` auto/custom, steps, sleep, water ml),
-  earned rank and best level (both only go up).
+  `mealNames` (the user's names for breakfast/lunch/dinner/snacks), earned rank and best level (both only go up).
   XP, level and streak are never stored: they're derived from the days (`progressFromDays` in `lib/xp.ts`).
 - `users/{uid}/quests/{id}` the user's quest list (title, xp, type, target/unit/step, order)
 - `users/{uid}/days/{YYYY-MM-DD}` a copy of that day's quests + progress, steps, sleep, weight, water
   (edits to quests apply to today; past days stay frozen)
 - `users/{uid}/workouts/{id}` workout templates (items: movement, sets, target by tracking type, RPE, rest, note, superset group); `users/{uid}/sessions/{id}` logged sessions (exercises with targets and sets: kg, reps,
   rpe, seconds, metres, done; no `finishedAt` = still in progress)
-- `users/{uid}/food/{id}` food log entries with macros
+- `users/{uid}/food/{id}` food log entries: date, meal slot, `loggedAt`, the food's name/brand/barcode/`foodId`,
+  amount (grams, or servings + the serving), a copy of its values per 100 g, `missing` nutrients, and the totals
+- `users/{uid}/foods/{id}` the user's custom foods (ids `custom-…`; per 100 g + servings; `basedOn` = barcode of an
+  Open Food Facts product they completed); `users/{uid}/favorites/{foodId}` favourite foods (with a copy of the food);
+  `users/{uid}/savedMeals/{id}` saved meals (name + portions)
+- The Open Food Facts product cache (`offProducts`) is device-only, never synced
 - `users/{uid}/programs/{id}` active program state (day N, strict mode)
 - `users/{uid}/movements/{id}` the user's custom movements (ids start with `custom-`)
 - The shared movement library is NOT in Firestore: it's bundled with the app (see "Movement library")
@@ -156,6 +164,34 @@ squad data readable by members only; community posts readable by all signed-in u
 - `records.ts`: Epley e1RM, PRs vs earlier sessions (none on a movement's first log), "last time", totals.
 - `progression.ts` — tunable by the coach: next-time rule, +2.5 kg lower body / +1.25 kg upper body (by primary
   muscle), plate steps.
+
+## Food logging (`src/features/food`)
+- Food tab (`/food`, `?date=` for other days): calories as a 10-block bar and protein/carbs/fat as flat bars against
+  the saved goals, then four meals (names editable) with per-meal totals. A meal's ⋯ menu: copy the day before's
+  meal, save as a meal, rename. "Copy yesterday" copies a whole day. Tapping an entry edits/moves/removes it (`?entry=`).
+- Add food (`/food/add?meal=&date=`): one search over everything on the device (bundled USDA foods, custom foods,
+  favourites, cached packaged products; `search.ts`, unit-tested: typos, partial words, UK words like courgette/mince).
+  Ranking: own foods, then favourites, nudged ahead of equal matches. Empty search shows tabs: Recent (from the log),
+  Favourites, My foods, Saved meals (log in one tap). Dialogs live in the URL (`?food=`, `?scan=1`, `?quick=1`) so
+  Back closes them. The food dialog logs by servings, grams or ounces; quick add = just kcal + macros (kcal from 4/4/9
+  if empty).
+- Every entry stores the food's values, so copying meals/days, recents and saved meals never need a lookup.
+  `loggedAt` only goes up, so entries keep their order. All amounts in grams (ounces only for display/input).
+- USDA list (`library/`): ~340 whole foods from FoodData Central SR Legacy (public domain). `foodList.ts` is the
+  coach's list (FDC id, display name, group, `SERVING_OVERRIDES`); `npm run import:foods` writes `foods.json`
+  (own chunk, loaded on demand, precached). Ids are `usda-<fdcId>`: never change them. Tests check the list.
+- Open Food Facts (`off.ts`): identifies as `FromZero/0.1.0 (https://fromzero-ce670.web.app)` in `X-User-Agent`
+  (browsers can't set User-Agent). Product reads via `/api/v2/product/{code}`; text search via `/cgi/search.pl`
+  ONLY when the user submits (their rule: no search-as-you-type; their newer search server has no CORS). Client limiter
+  at 14 reads / 9 searches a minute, backoff with jitter on 429/503. Dev server uses the staging server
+  (world.openfoodfacts.net, login off/off) unless `VITE_OFF_SERVER=production`; builds use production.
+  Every fetched product is cached in `offProducts` (fresh 30 days, "not found" 1 day; stale copy used offline).
+  Missing nutrients are listed and count as 0; kcal falls back to kJ ÷ 4.184 (flagged). "Fill in the gaps" makes a
+  custom copy (`basedOn`), which wins on later scans/lookups and fixes that product's incomplete log entries.
+- Scanning (`scan/scanner.ts`): native BarcodeDetector where available, else `@zxing/browser` (lazy chunk);
+  UPC-E is expanded to UPC-A. Typing the number always works. The APK will need the `CAMERA` permission in
+  AndroidManifest.xml (no Android project yet).
+- Credits for USDA and Open Food Facts (ODbL) are in About on the Me screen.
 
 ## Onboarding & goals (`src/features/onboarding`, `src/features/profile/goals`)
 - First run: `OnboardingGate` (wraps the app shell) sends a profile without `onboarding` to `/welcome` — one
