@@ -185,3 +185,40 @@ export function CloseIcon(props: IconProps) {
     </Icon>
   )
 }
+
+/** Drag handle: two columns of three dots, drawn as short strokes. */
+export function GripIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" strokeWidth={3} />
+    </Icon>
+  )
+}
+
+export function CopyIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M8 8h12v12H8z" />
+      <path d="M16 8V4H4v12h4" />
+    </Icon>
+  )
+}
+
+/** Superset link: two chain links. */
+export function LinkIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M10 14l4-4" />
+      <path d="M8.5 11.5L6 14a3 3 0 004 4l2.5-2.5M15.5 12.5L18 10a3 3 0 00-4-4l-2.5 2.5" />
+    </Icon>
+  )
+}
+
+export function UnlinkIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M8.5 11.5L6 14a3 3 0 004 4l2.5-2.5M15.5 12.5L18 10a3 3 0 00-4-4l-2.5 2.5" />
+      <path d="M4 4l3 3M20 20l-3-3" />
+    </Icon>
+  )
+}

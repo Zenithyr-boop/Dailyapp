@@ -3,12 +3,14 @@ import { ComingSoon } from '../../components/ComingSoon'
 import { ChevronRightIcon } from '../../components/icons'
 import { PageHeader } from '../../components/PageHeader'
 import { Panel } from '../../components/Panel'
+import { WorkoutsSection } from './workouts/WorkoutsSection'
 
 export function TrainPage() {
   return (
     <>
       <PageHeader title="Train" />
       <div className="space-y-4">
+        <WorkoutsSection />
         <Panel title="Library">
           <Link to="/train/movements" className="group -my-2 flex min-h-touch items-center gap-3 py-2">
             <span className="flex-1">
@@ -21,7 +23,7 @@ export function TrainPage() {
           </Link>
         </Panel>
         <ComingSoon
-          items={['Saved workout templates', 'Log sessions set by set: kg, reps, RPE', 'History and personal records']}
+          items={['Log sessions set by set: kg, reps, RPE', 'History and personal records']}
         />
       </div>
     </>

@@ -46,3 +46,10 @@ export function formatDuration(seconds: number): string {
   const m = min % 60
   return m ? `${h} h ${m} min` : `${h} h`
 }
+
+/** For a big-number display: 52 min → { value: '52', unit: 'min' }, 75 min → { value: '1:15', unit: 'h' }. */
+export function durationParts(seconds: number): { value: string; unit: string } {
+  const min = Math.round(seconds / 60)
+  if (min < 60) return { value: String(min), unit: 'min' }
+  return { value: `${Math.floor(min / 60)}:${String(min % 60).padStart(2, '0')}`, unit: 'h' }
+}
