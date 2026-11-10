@@ -1,6 +1,7 @@
-import { db, recordKey, SYNCED_TABLES, type CustomMovement, type Day, type QuestDef, type WorkoutTemplate, type SyncedRecord, type SyncedTable } from '../db'
+import { db, recordKey, SYNCED_TABLES, type CustomMovement, type Day, type QuestDef, type Session, type WorkoutTemplate, type SyncedRecord, type SyncedTable } from '../db'
 import { createCustomMovement, deleteCustomMovement } from '../../features/train/library/customMovements'
 import { starterById } from '../../features/train/workouts/starters'
+import { deleteSession, getSession, patchSet, setDone, startSession, updateSession } from '../../features/train/sessions/sessionsRepo'
 import { deleteWorkout, getWorkout, listStoredWorkouts, saveWorkout, workoutLists } from '../../features/train/workouts/workoutsRepo'
 import { DEFAULT_QUESTS, ensureDay, ensureSetup, listQuestDefs, setQuestDone } from '../../features/quests/questsRepo'
 import { countPending, getSyncStatus, startSync, stopSync } from './engine'
@@ -248,6 +249,27 @@ describe('ongoing sync', () => {
     const lists = workoutLists(await listStoredWorkouts())
     expect(lists.deletedStarters).toBe(1)
     expect(lists.programs[1]!.rows.map((r) => r.workout.name)).toEqual(['Lower'])
+  })
+
+  it('syncs a logged session set by set, both ways, including deletes', async () => {
+    const id = await startSession(starterById('starter-fb-a'), () => 'weight_reps')
+    const ex = (await getSession(id))!.exercises[0]!
+    await updateSession(id, (x) => setDone(patchSet(x, ex.key, ex.sets[0]!.key, { kg: 100, reps: 5 }), ex.key, ex.sets[0]!.key, true))
+    await settled()
+    const up = cloud.records('sessions')[0] as Session
+    expect(up.exercises[0]!.sets[0]).toMatchObject({ kg: 100, reps: 5, done: true })
+    expect(up).not.toHaveProperty('finishedAt')
+
+    // Finished on the other device: this one sees it.
+    vi.setSystemTime(new Date(`${today}T10:00:00`))
+    const finishedAt = Date.now()
+    cloud.put('sessions', { ...up, finishedAt, updatedAt: finishedAt } as Session)
+    await vi.waitFor(async () => expect((await getSession(id))?.finishedAt).toBe(finishedAt))
+
+    vi.setSystemTime(new Date(`${today}T11:00:00`))
+    await deleteSession(id)
+    await settled()
+    expect((cloud.records('sessions')[0] as Session).deleted).toBe(1)
   })
 
   it('waits while offline and uploads when back online', async () => {

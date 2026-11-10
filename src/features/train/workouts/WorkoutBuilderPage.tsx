@@ -2,13 +2,14 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Link, useBlocker, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import { Button } from '../../../components/Button'
 import { Dialog } from '../../../components/Dialog'
-import { ChevronLeftIcon, CopyIcon, LinkIcon, PlusIcon, TrashIcon, UnlinkIcon } from '../../../components/icons'
+import { ChevronLeftIcon, CopyIcon, LinkIcon, PlayIcon, PlusIcon, TrashIcon, UnlinkIcon } from '../../../components/icons'
 import { PageHeader } from '../../../components/PageHeader'
 import { Panel } from '../../../components/Panel'
 import { StatBlock } from '../../../components/StatBlock'
 import type { WorkoutItem, WorkoutTemplate } from '../../../lib/db'
 import { canonical } from '../../../lib/sync/merge'
 import { useMovements } from '../library/useMovements'
+import { useStartSession } from '../sessions/useStartSession'
 import { durationParts, estimateSeconds } from './duration'
 import { inputClass } from './fields'
 import { ItemCard } from './ItemCard'
@@ -43,6 +44,7 @@ export function WorkoutBuilderPage() {
   const location = useLocation()
   const [params, setParams] = useSearchParams()
   const formId = useId()
+  const { start, dialog: startDialog } = useStartSession()
 
   const { movements, error, retry } = useMovements()
   const byId = useMemo(() => new Map(movements?.map((m) => [m.id, m])), [movements])
@@ -304,6 +306,15 @@ export function WorkoutBuilderPage() {
           </Button>
           {!isNew && (
             <>
+              <Button
+                variant="secondary"
+                onClick={() => start(draft)}
+                disabled={dirty || items.length === 0}
+                title={dirty ? 'Save first' : undefined}
+              >
+                <PlayIcon size={18} />
+                Start
+              </Button>
               <Button variant="secondary" onClick={duplicate} disabled={dirty} title={dirty ? 'Save first' : undefined}>
                 <CopyIcon size={18} />
                 Duplicate
@@ -342,6 +353,8 @@ export function WorkoutBuilderPage() {
           </div>
         </Dialog>
       )}
+
+      {startDialog}
 
       {blocker.state === 'blocked' && (
         <Dialog title="Discard changes?" onClose={() => blocker.reset()}>

@@ -124,18 +124,47 @@ export interface WorkoutTemplate extends SyncFields {
   items: WorkoutItem[]
 }
 
+/**
+ * One set in a logged session. Which fields are used follows the movement's
+ * tracking type: kg + reps (weight_reps; `kg` is the assistance for assisted),
+ * reps (bodyweight), seconds (time), seconds + metres (distance). Weights are
+ * always stored in kg.
+ */
 export interface LoggedSet {
-  movementId: string
-  kg: number
-  reps: number
+  key: string
+  done: boolean
+  kg?: number
+  reps?: number
   rpe?: number
+  seconds?: number
+  meters?: number
+  /** When it was ticked (ms). */
+  doneAt?: number
+}
+
+/** A movement in a logged session, with the targets it was started with. */
+export interface SessionExercise {
+  key: string
+  movementId: string
+  /** Targets copied from the workout template (none for movements added on the fly). */
+  target?: Omit<WorkoutItem, 'key' | 'movementId' | 'group'>
+  /** Superset group, as in the template. */
+  group?: string
+  sets: LoggedSet[]
+  note?: string
 }
 
 export interface Session extends SyncFields {
   id: string
+  /** Local day the session started, `YYYY-MM-DD`. */
   date: string
+  name: string
   templateId?: string
-  sets: LoggedSet[]
+  /** ms since epoch. */
+  startedAt: number
+  /** Unset while the session is in progress. */
+  finishedAt?: number
+  exercises: SessionExercise[]
   notes?: string
 }
 
@@ -239,6 +268,12 @@ db.version(3)
 // v4: the user's custom movements (the shared library is bundled, not stored).
 db.version(4).stores({
   movements: 'id, dirty',
+})
+
+// v5: logged sessions sort by start time (history) and have a new shape.
+// Nothing wrote sessions before v5, so there is nothing to migrate.
+db.version(5).stores({
+  sessions: 'id, date, templateId, startedAt, dirty',
 })
 
 /** Tables that sync to Firestore. */

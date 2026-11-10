@@ -222,3 +222,37 @@ export function UnlinkIcon(props: IconProps) {
     </Icon>
   )
 }
+
+export function CheckIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M5 12.5l4.5 4.5L19 7.5" />
+    </Icon>
+  )
+}
+
+export function PlayIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M7 5v14l12-7z" />
+    </Icon>
+  )
+}
+
+/** Swap a movement: two opposing arrows. */
+export function SwapIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4 8h14M14 4l4 4-4 4M20 16H6M10 12l-4 4 4 4" />
+    </Icon>
+  )
+}
+
+export function HistoryIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4 12a8 8 0 108-8 8 8 0 00-6.5 3.3" />
+      <path d="M4 4v4h4M12 8v4l3 2" />
+    </Icon>
+  )
+}

@@ -4,13 +4,17 @@ import { ChevronRightIcon } from '../../components/icons'
 import { PageHeader } from '../../components/PageHeader'
 import { Panel } from '../../components/Panel'
 import { WorkoutsSection } from './workouts/WorkoutsSection'
+import { ResumeBanner } from './sessions/ResumeBanner'
+import { SessionHistory } from './sessions/SessionHistory'
 
 export function TrainPage() {
   return (
     <>
       <PageHeader title="Train" />
       <div className="space-y-4">
+        <ResumeBanner />
         <WorkoutsSection />
+        <SessionHistory />
         <Panel title="Library">
           <Link to="/train/movements" className="group -my-2 flex min-h-touch items-center gap-3 py-2">
             <span className="flex-1">
@@ -23,7 +27,7 @@ export function TrainPage() {
           </Link>
         </Panel>
         <ComingSoon
-          items={['Log sessions set by set: kg, reps, RPE', 'History and personal records']}
+          items={['Programs that schedule your workouts week by week']}
         />
       </div>
     </>

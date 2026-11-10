@@ -8,6 +8,8 @@ import { MovementLibraryPage } from '../features/train/library/MovementLibraryPa
 import { MovementDetailPage } from '../features/train/library/MovementDetailPage'
 import { MovementFormPage } from '../features/train/library/MovementFormPage'
 import { WorkoutBuilderPage } from '../features/train/workouts/WorkoutBuilderPage'
+import { SessionPage } from '../features/train/sessions/SessionPage'
+import { SessionSummaryPage } from '../features/train/sessions/SessionSummaryPage'
 import { FoodPage } from '../features/food/FoodPage'
 import { SquadPage } from '../features/squad/SquadPage'
 import { ProfilePage } from '../features/profile/ProfilePage'
@@ -30,6 +32,8 @@ export const router = createBrowserRouter([
       { path: 'train/movements/:id/edit', element: <MovementFormPage /> },
       { path: 'train/workouts/new', element: <WorkoutBuilderPage /> },
       { path: 'train/workouts/:id', element: <WorkoutBuilderPage /> },
+      { path: 'train/session', element: <SessionPage /> },
+      { path: 'train/sessions/:id', element: <SessionSummaryPage /> },
       { path: 'food', element: <FoodPage /> },
       { path: 'squad', element: <SquadPage /> },
       { path: 'me', element: <ProfilePage /> },

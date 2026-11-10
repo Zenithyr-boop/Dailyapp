@@ -65,8 +65,8 @@ describe('workout builder', { timeout: 20_000 }, () => {
     await vi.waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(cards().map((c) => c.getAttribute('aria-label'))).toEqual(['Plank', 'Barbell Curl'])
     // Plank is timed, so it gets seconds instead of a rep range.
-    expect(within(cards()[0]!).getByLabelText('Seconds')).toHaveValue(30)
-    expect(within(cards()[1]!).getByLabelText('Minimum reps for Barbell Curl')).toHaveValue(8)
+    expect(within(cards()[0]!).getByLabelText('Seconds')).toHaveValue('30')
+    expect(within(cards()[1]!).getByLabelText('Minimum reps for Barbell Curl')).toHaveValue('8')
 
     // Reorder with the buttons, add a set, superset them.
     fireEvent.click(screen.getByRole('button', { name: 'Move Barbell Curl up' }))
