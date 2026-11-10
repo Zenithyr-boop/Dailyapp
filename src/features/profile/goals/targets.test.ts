@@ -131,5 +131,6 @@ describe('rate options', () => {
   it('formats rates in the user units', () => {
     expect(formatRate(0.5, 'metric')).toBe('0.5 kg')
     expect(formatRate(lbToKg(1), 'imperial')).toBe('1 lb')
+    expect(formatRate(lbToKg(1.993), 'imperial', { approx: true })).toBe('2 lb')
   })
 })

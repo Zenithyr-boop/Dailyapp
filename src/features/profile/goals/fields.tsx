@@ -27,7 +27,9 @@ export function ChoiceGroup<T extends string>({
   columns?: 1 | 2 | 3
 }) {
   const name = useId()
-  const grid = columns === 3 ? 'grid-cols-3' : columns === 2 ? 'grid-cols-2' : 'grid-cols-1'
+  // Three across only from tablet width up; on phones they stack (descriptions need the room).
+  const grid = columns === 3 ? 'grid-cols-1 sm:grid-cols-3' : columns === 2 ? 'grid-cols-2' : 'grid-cols-1'
+  const centered = columns === 3 ? 'sm:items-center sm:text-center' : columns === 2 ? 'items-center text-center' : ''
   return (
     <fieldset>
       <legend className={legendClassName}>{legend}</legend>
@@ -38,7 +40,7 @@ export function ChoiceGroup<T extends string>({
             <label
               key={o.value}
               className={`flex min-h-touch cursor-pointer flex-col justify-center border px-3 py-2 has-focus-visible:outline-2 has-focus-visible:outline-accent ${
-                columns > 1 ? 'items-center text-center' : ''
+                centered
               } ${selected ? 'border-accent bg-accent text-on-accent' : 'border-line text-text hover:border-accent'}`}
             >
               <input
@@ -268,7 +270,7 @@ export function TargetsSummary({ result, goal, units }: { result: TargetResult; 
       <p className="text-sm text-muted">
         Maintenance is about {fmt.format(result.maintenance)} kcal a day.
         {goal !== 'maintain' && !result.floored && Math.abs(expected) > 0.001 && (
-          <> At these numbers you’d {expected < 0 ? 'lose' : 'gain'} about {formatRate(Math.abs(expected), units)} a week.</>
+          <> At these numbers you’d {expected < 0 ? 'lose' : 'gain'} about {formatRate(Math.abs(expected), units, { approx: true })} a week.</>
         )}
       </p>
       {result.capped && (
@@ -281,7 +283,7 @@ export function TargetsSummary({ result, goal, units }: { result: TargetResult; 
         <Note>
           We never set calories below {fmt.format(result.floor)} kcal a day.
           {goal === 'lose' && expected < 0 && (
-            <> At this number you’d lose about {formatRate(Math.abs(expected), units)} a week, a little slower than you picked.</>
+            <> At this number you’d lose about {formatRate(Math.abs(expected), units, { approx: true })} a week, a little slower than you picked.</>
           )}
         </Note>
       )}

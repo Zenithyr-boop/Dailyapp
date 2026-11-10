@@ -174,9 +174,13 @@ export function isFastestRate(goal: GoalKind, units: UnitSystem, rateKg: number)
   return nearestRateOption(goal, units, rateKg).shown === fastest.shown
 }
 
-/** "0.5 kg" / "1.1 lb" for a weekly rate or change. */
-export function formatRate(kg: number, units: UnitSystem): string {
+/**
+ * "0.5 kg" / "1.5 lb" for a weekly rate or change. `approx` rounds to one
+ * decimal, for estimates ("about 2 lb a week", not "1.99 lb").
+ */
+export function formatRate(kg: number, units: UnitSystem, { approx = false } = {}): string {
   const value = units === 'metric' ? kg : kgToLb(kg)
-  const text = Math.abs(value) >= 10 ? value.toFixed(0) : String(Math.round(value * 100) / 100)
+  const factor = approx ? 10 : 100
+  const text = Math.abs(value) >= 10 ? value.toFixed(0) : String(Math.round(value * factor) / factor)
   return `${text} ${units === 'metric' ? 'kg' : 'lb'}`
 }
