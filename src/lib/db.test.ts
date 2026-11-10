@@ -18,7 +18,7 @@ describe('db', () => {
   })
 
   it('queries food entries by date', async () => {
-    const base = { name: 'Oats', grams: 80, kcal: 300, proteinG: 10, carbsG: 54, fatG: 6, updatedAt: 0 }
+    const base = { name: 'Oats', grams: 80, meal: 'breakfast' as const, loggedAt: 0, kcal: 300, proteinG: 10, carbsG: 54, fatG: 6, updatedAt: 0 }
     await db.food.bulkPut([
       { ...base, id: 'a', date: '2026-11-09' },
       { ...base, id: 'b', date: '2026-11-08' },
