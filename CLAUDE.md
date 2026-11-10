@@ -104,7 +104,7 @@ Rules:
 - `users/{uid}/quests/{id}` the user's quest list (title, xp, type, target/unit/step, order)
 - `users/{uid}/days/{YYYY-MM-DD}` a copy of that day's quests + progress, steps, sleep, weight, water
   (edits to quests apply to today; past days stay frozen)
-- `users/{uid}/workouts/{id}` saved templates; `users/{uid}/sessions/{id}` logged sessions (sets: kg, reps, rpe)
+- `users/{uid}/workouts/{id}` workout templates (items: movement, sets, target by tracking type, RPE, rest, note, superset group); `users/{uid}/sessions/{id}` logged sessions (sets: kg, reps, rpe)
 - `users/{uid}/food/{id}` food log entries with macros
 - `users/{uid}/programs/{id}` active program state (day N, strict mode)
 - `users/{uid}/movements/{id}` the user's custom movements (ids start with `custom-`)
@@ -125,6 +125,19 @@ squad data readable by members only; community posts readable by all signed-in u
   `coachPicks.ts` (ids that show first and always rank first in search). Tests check every id exists.
 - Search (`search.ts`, unit-tested): typos, partial words, aliases (RDL, OHP, DB…). Ranking: coach's
   picks, then custom movements, then the rest. Filters: muscle (primary only), equipment, category.
+
+## Workouts (`src/features/train/workouts`)
+- Templates live on the Train tab; the builder is `/train/workouts/:id` (`/train/workouts/new` for a blank one).
+  Edits stay in a draft until Save; leaving with unsaved changes asks first. The library picker opens over
+  the builder (`?add=1`, so phone Back closes it).
+- Targets follow the movement's tracking type (`targets.ts`): rep range for weight/bodyweight/assisted, seconds
+  for time, minutes (+ optional metres) for distance.
+- Supersets = neighbouring items sharing a `group` (`supersets.ts`). Only the last movement of a round rests.
+- Estimated duration (`duration.ts`): ~4 s per rep + 10 s setup per set (or the time target), rest after every set
+  but the last, plus 2 min per movement for warm-up and changeover.
+- Starter templates (`starters.ts`, editable by the coach) are bundled with fixed `starter-…` ids and stored only
+  once edited or deleted, so new devices stay "untouched" on first sign-in and devices never duplicate them.
+  Never change a starter id.
 
 ## Account sync (`src/lib/sync`)
 - Dexie is the source of truth on the device; Firestore is the cloud copy. Signed out = local only.
