@@ -7,16 +7,17 @@
  * - Adds a guessed tracking type to `trackingTypes.ts` for every movement that
  *   isn't listed there yet. Existing lines (the coach's edits) are kept as they are.
  *
- * The dataset is pinned to one commit so re-running gives the same result.
+ * The dataset is pinned to one commit (`library/dataset.ts`) so re-running gives
+ * the same result; bump that commit to pull in upstream changes.
  * Movement ids are the dataset's ids and must never change: logged sets point at them.
  */
 import { readFile, writeFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
+import { DATASET_RAW } from '../src/features/train/library/dataset.ts'
 import { guessTracking, type RawExercise } from '../src/features/train/library/guessTracking.ts'
 import { TRACKING_TYPES, type LibraryEntry, type TrackingType } from '../src/features/train/library/types.ts'
 
-export const DATASET_COMMIT = 'f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5'
-const SOURCE = `https://raw.githubusercontent.com/yuhonas/free-exercise-db/${DATASET_COMMIT}/dist/exercises.json`
+const SOURCE = `${DATASET_RAW}/dist/exercises.json`
 
 const libraryDir = fileURLToPath(new URL('../src/features/train/library/', import.meta.url))
 const jsonPath = `${libraryDir}exercises.json`
