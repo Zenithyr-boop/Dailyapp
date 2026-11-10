@@ -261,7 +261,7 @@ class SyncSession {
         db.profile.get('me'),
         db.quests.toArray(),
         db.days.toArray(),
-        Promise.all((['workouts', 'sessions', 'food', 'programs'] as const).map((t) => db.table(t).count())).then(
+        Promise.all((['workouts', 'sessions', 'food', 'programs', 'movements'] as const).map((t) => db.table(t).count())).then(
           (c) => c.reduce((a, b) => a + b, 0),
         ),
       ])

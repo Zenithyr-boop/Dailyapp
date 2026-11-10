@@ -1,4 +1,5 @@
-import { db, recordKey, SYNCED_TABLES, type Day, type QuestDef, type SyncedRecord, type SyncedTable } from '../db'
+import { db, recordKey, SYNCED_TABLES, type CustomMovement, type Day, type QuestDef, type SyncedRecord, type SyncedTable } from '../db'
+import { createCustomMovement, deleteCustomMovement } from '../../features/train/library/customMovements'
 import { DEFAULT_QUESTS, ensureDay, ensureSetup, listQuestDefs, setQuestDone } from '../../features/quests/questsRepo'
 import { countPending, getSyncStatus, startSync, stopSync } from './engine'
 import type { RemoteBatch, RemoteStore } from './remote'
@@ -175,6 +176,30 @@ describe('ongoing sync', () => {
     await vi.waitFor(async () => expect((await db.days.get(today))!.quests[1]!.done).toBe(true))
     await settled()
     expect(cloud.writes).toBe(before)
+  })
+
+  it('syncs custom movements both ways, including deletes', async () => {
+    const id = await createCustomMovement({
+      name: 'Landmine Press',
+      primaryMuscles: ['shoulders'],
+      secondaryMuscles: [],
+      equipment: 'barbell',
+      category: 'strength',
+      tracking: 'weight_reps',
+      instructions: [],
+    })
+    await settled()
+    expect(cloud.records('movements')).toEqual([expect.objectContaining({ id, name: 'Landmine Press' })])
+
+    vi.setSystemTime(new Date(`${today}T10:00:00`))
+    const other = { ...(cloud.records('movements')[0] as CustomMovement), name: 'Landmine press (renamed)', updatedAt: Date.now() }
+    cloud.put('movements', other)
+    await vi.waitFor(async () => expect((await db.movements.get(id))?.name).toBe('Landmine press (renamed)'))
+
+    vi.setSystemTime(new Date(`${today}T11:00:00`))
+    await deleteCustomMovement(id)
+    await settled()
+    expect((cloud.records('movements')[0] as CustomMovement).deleted).toBe(1)
   })
 
   it('waits while offline and uploads when back online', async () => {

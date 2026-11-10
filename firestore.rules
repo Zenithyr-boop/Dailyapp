@@ -24,7 +24,7 @@ service cloud.firestore {
 
     // ---- Private data: each user reads and writes only their own tree ----
     // users/{uid} (profile), plus quests, days, workouts, sessions, food,
-    // programs under it. Delete is allowed for "Delete my account".
+    // programs, movements under it. Delete is allowed for "Delete my account".
     match /users/{uid} {
       allow read, delete: if isUser(uid);
       allow create, update: if isUser(uid) && stampedByServer();
@@ -35,11 +35,8 @@ service cloud.firestore {
       }
     }
 
-    // ---- Shared exercise library: read-only for users ----
-    match /movements/{movementId} {
-      allow read: if signedIn();
-      allow write: if false;
-    }
+    // The shared movement library is bundled with the app, not stored here.
+    // Custom movements live under users/{uid}/movements (covered above).
 
     // ---- Squads: only members can read ----
     // A squad document keeps `ownerId` and `memberIds` (list of uids).

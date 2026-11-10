@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "dev:emulator": "vite --mode emulator --port 5174",
-    "emulators": "npx -y firebase-tools@15 emulators:start --only auth --project fromzero-ce670"
+    "emulators": "npx -y firebase-tools@15 emulators:start --only auth --project fromzero-ce670",
+    "import:exercises": "node scripts/import-exercises.ts"
   },
   "dependencies": {
     "dexie": "^4.4.7",

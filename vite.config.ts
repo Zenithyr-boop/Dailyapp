@@ -26,7 +26,21 @@ export default defineConfig({
       },
       workbox: {
         navigateFallback: '/index.html',
+        // The movement library (exercises.json) is its own JS chunk, so it's precached here too.
         globPatterns: ['**/*.{js,css,html,svg,woff2}'],
+        runtimeCaching: [
+          {
+            // Movement photos: fetched only when a movement is opened, then kept for offline use.
+            // Requested with CORS (crossOrigin on the <img>) so the cache stores real, small responses.
+            urlPattern: /^https:\/\/raw\.githubusercontent\.com\/yuhonas\/free-exercise-db\/.+\.jpg$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'movement-photos',
+              expiration: { maxEntries: 400, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+        ],
       },
     }),
   ],
