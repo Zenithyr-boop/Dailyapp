@@ -12,9 +12,12 @@
     "test:watch": "vitest",
     "dev:emulator": "vite --mode emulator --port 5174",
     "emulators": "npx -y firebase-tools@15 emulators:start --only auth --project fromzero-ce670",
-    "import:exercises": "node scripts/import-exercises.ts"
+    "import:exercises": "node scripts/import-exercises.ts",
+    "import:foods": "node scripts/import-foods.ts"
   },
   "dependencies": {
+    "@zxing/browser": "^0.1.5",
+    "@zxing/library": "^0.21.3",
     "dexie": "^4.4.7",
     "dexie-react-hooks": "^4.4.0",
     "firebase": "^13.2.0",

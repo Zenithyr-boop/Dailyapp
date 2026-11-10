@@ -42,6 +42,8 @@ export interface Profile extends SyncFields {
   body?: BodyStats
   /** Lose / maintain / gain and the weekly rate (kg). */
   plan?: GoalPlan
+  /** The user's names for the four meals (unset = Breakfast, Lunch, Dinner, Snacks). */
+  mealNames?: Partial<Record<MealSlot, string>>
   /** Highest rank earned. Never drops; devices merge it with max. */
   rank: Rank
   /** Highest level already celebrated, so a level-up shows only once. Merged with max. */
@@ -183,16 +185,113 @@ export interface Session extends SyncFields {
   notes?: string
 }
 
-export interface FoodEntry extends SyncFields {
-  id: string
-  date: string
-  name: string
-  barcode?: string
-  grams: number
+/** Values per 100 g (per 100 ml for drinks, treated as grams). */
+export interface Per100 {
   kcal: number
   proteinG: number
   carbsG: number
   fatG: number
+}
+
+export type Nutrient = keyof Per100
+
+/** A named portion of a food, e.g. "1 large" = 50 g. */
+export interface Serving {
+  label: string
+  grams: number
+}
+
+/** The four meals of a day. Their names are editable (profile `mealNames`). */
+export type MealSlot = 'breakfast' | 'lunch' | 'dinner' | 'snacks'
+
+/**
+ * How much of a food was eaten, with a copy of the food's values so the entry
+ * (and "log again", saved meals, copying a day) never needs the food itself.
+ * Quick add entries have no food: only the totals.
+ */
+export interface Portion {
+  name: string
+  brand?: string
+  /** `usda-…`, `off-<barcode>` or `custom-…`. Unset for quick add. */
+  foodId?: string
+  barcode?: string
+  /** Amount eaten. Unset for quick add. */
+  grams?: number
+  /** Logged by servings: how many, and which one. Otherwise by grams. */
+  servings?: number
+  serving?: Serving
+  /** The food's values when it was logged. */
+  per100?: Per100
+  /** Nutrients the food's data was missing (counted as 0). */
+  missing?: Nutrient[]
+  /** Totals for this amount. */
+  kcal: number
+  proteinG: number
+  carbsG: number
+  fatG: number
+}
+
+/** One line in the food log. */
+export interface FoodEntry extends Portion, SyncFields {
+  id: string
+  /** Local day, `YYYY-MM-DD`. */
+  date: string
+  meal: MealSlot
+  /** When it was logged (ms). Sorts a meal's entries and the recent foods. */
+  loggedAt: number
+}
+
+/**
+ * A food the user made (or their completed copy of an Open Food Facts product
+ * whose nutrition was incomplete: `basedOn` = that barcode). Ids start with `custom-`.
+ */
+export interface CustomFood extends SyncFields {
+  id: string
+  name: string
+  brand?: string
+  barcode?: string
+  per100: Per100
+  servings: Serving[]
+  basedOn?: string
+}
+
+/** The parts of a food that favourites and the product cache keep, so they work without a lookup. */
+export interface FoodSnapshot {
+  id: string
+  name: string
+  brand?: string
+  barcode?: string
+  per100: Per100
+  servings: Serving[]
+  missing?: Nutrient[]
+  /** kcal worked out from kJ (the product listed only kJ). */
+  kcalFromKj?: boolean
+}
+
+/** A favourite food, keyed by the food's id. */
+export interface FavoriteFood extends SyncFields {
+  id: string
+  food: FoodSnapshot
+  /** When it was starred (ms); newest first. */
+  addedAt: number
+}
+
+/** A combination of foods logged in one tap. */
+export interface SavedMeal extends SyncFields {
+  id: string
+  name: string
+  items: Portion[]
+}
+
+/**
+ * Device-only cache of Open Food Facts products (every product fetched, from
+ * scans and searches), so repeat lookups cost no request and work offline.
+ * `food` is null when the barcode wasn't found.
+ */
+export interface OffProduct {
+  barcode: string
+  food: FoodSnapshot | null
+  fetchedAt: number
 }
 
 export interface ProgramState extends SyncFields {
@@ -235,6 +334,10 @@ export type FromZeroDB = Dexie & {
   food: EntityTable<FoodEntry, 'id'>
   programs: EntityTable<ProgramState, 'id'>
   movements: EntityTable<CustomMovement, 'id'>
+  foods: EntityTable<CustomFood, 'id'>
+  favorites: EntityTable<FavoriteFood, 'id'>
+  savedMeals: EntityTable<SavedMeal, 'id'>
+  offProducts: EntityTable<OffProduct, 'barcode'>
   meta: EntityTable<MetaEntry, 'key'>
 }
 
@@ -308,8 +411,31 @@ db.version(6)
       })
   })
 
+// v7: food logging. Log entries get a meal and a log time (nothing wrote `food`
+// before v7). Custom foods, favourites and saved meals sync; the Open Food
+// Facts product cache stays on the device.
+db.version(7).stores({
+  food: 'id, date, loggedAt, dirty',
+  foods: 'id, barcode, basedOn, dirty',
+  favorites: 'id, dirty',
+  savedMeals: 'id, dirty',
+  offProducts: 'barcode, fetchedAt',
+})
+
 /** Tables that sync to Firestore. */
-export const SYNCED_TABLES = ['profile', 'quests', 'days', 'workouts', 'sessions', 'food', 'programs', 'movements'] as const
+export const SYNCED_TABLES = [
+  'profile',
+  'quests',
+  'days',
+  'workouts',
+  'sessions',
+  'food',
+  'programs',
+  'movements',
+  'foods',
+  'favorites',
+  'savedMeals',
+] as const
 export type SyncedTable = (typeof SYNCED_TABLES)[number]
 /** Any record of a synced table (Dexie hands these back untyped). */
 export type SyncedRecord = SyncFields

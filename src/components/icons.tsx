@@ -256,3 +256,40 @@ export function HistoryIcon(props: IconProps) {
     </Icon>
   )
 }
+
+/** Barcode: vertical bars of different widths. */
+export function BarcodeIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4 6v12M7 6v12M10.5 6v12M14 6v12M17 6v12M20 6v12" />
+      <path d="M8.5 6v12M15.5 6v12" strokeWidth={0.9} />
+    </Icon>
+  )
+}
+
+/** Favourite: a star, filled when `filled`. */
+export function StarIcon({ filled = false, ...props }: IconProps & { filled?: boolean }) {
+  return (
+    <Icon {...props} fill={filled ? 'currentColor' : 'none'}>
+      <path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.8z" />
+    </Icon>
+  )
+}
+
+/** More actions: three dots. */
+export function MoreIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M5 12h.01M12 12h.01M19 12h.01" strokeWidth={3} />
+    </Icon>
+  )
+}
+
+/** Quick add: a lightning bolt. */
+export function BoltIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M13 3L5 14h6l-1 7 8-11h-6z" />
+    </Icon>
+  )
+}

@@ -261,7 +261,8 @@ class SyncSession {
         db.profile.get('me'),
         db.quests.toArray(),
         db.days.toArray(),
-        Promise.all((['workouts', 'sessions', 'food', 'programs', 'movements'] as const).map((t) => db.table(t).count())).then(
+        // Every table besides profile, quests and days: any record there means the device was used.
+        Promise.all(SYNCED_TABLES.filter((t) => t !== 'profile' && t !== 'quests' && t !== 'days').map((t) => db.table(t).count())).then(
           (c) => c.reduce((a, b) => a + b, 0),
         ),
       ])
@@ -396,6 +397,8 @@ export async function clearLocalData(): Promise<void> {
     for (const table of SYNCED_TABLES) await db.table(table).clear()
     await db.meta.clear()
   })
+  // Cached Open Food Facts products show what was scanned: they go too.
+  await db.offProducts.clear()
 }
 
 /** Delete the account's cloud data (Delete my account). The caller then deletes the sign-in. */

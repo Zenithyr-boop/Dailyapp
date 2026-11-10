@@ -11,6 +11,10 @@ import { WorkoutBuilderPage } from '../features/train/workouts/WorkoutBuilderPag
 import { SessionPage } from '../features/train/sessions/SessionPage'
 import { SessionSummaryPage } from '../features/train/sessions/SessionSummaryPage'
 import { FoodPage } from '../features/food/FoodPage'
+import { AddFoodPage } from '../features/food/AddFoodPage'
+import { CustomFoodFormPage } from '../features/food/CustomFoodFormPage'
+import { MyFoodsPage } from '../features/food/MyFoodsPage'
+import { SavedMealPage, SavedMealsPage } from '../features/food/SavedMealsPage'
 import { SquadPage } from '../features/squad/SquadPage'
 import { ProfilePage } from '../features/profile/ProfilePage'
 import { GoalsPage } from '../features/profile/goals/GoalsPage'
@@ -44,6 +48,12 @@ export const router = createBrowserRouter([
       { path: 'train/session', element: <SessionPage /> },
       { path: 'train/sessions/:id', element: <SessionSummaryPage /> },
       { path: 'food', element: <FoodPage /> },
+      { path: 'food/add', element: <AddFoodPage /> },
+      { path: 'food/foods', element: <MyFoodsPage /> },
+      { path: 'food/foods/new', element: <CustomFoodFormPage /> },
+      { path: 'food/foods/:id/edit', element: <CustomFoodFormPage /> },
+      { path: 'food/meals', element: <SavedMealsPage /> },
+      { path: 'food/meals/:id', element: <SavedMealPage /> },
       { path: 'squad', element: <SquadPage /> },
       { path: 'me', element: <ProfilePage /> },
       { path: 'me/goals', element: <GoalsPage /> },
