@@ -1,5 +1,7 @@
-import { db, recordKey, SYNCED_TABLES, type CustomMovement, type Day, type QuestDef, type SyncedRecord, type SyncedTable } from '../db'
+import { db, recordKey, SYNCED_TABLES, type CustomMovement, type Day, type QuestDef, type WorkoutTemplate, type SyncedRecord, type SyncedTable } from '../db'
 import { createCustomMovement, deleteCustomMovement } from '../../features/train/library/customMovements'
+import { starterById } from '../../features/train/workouts/starters'
+import { deleteWorkout, getWorkout, listStoredWorkouts, saveWorkout, workoutLists } from '../../features/train/workouts/workoutsRepo'
 import { DEFAULT_QUESTS, ensureDay, ensureSetup, listQuestDefs, setQuestDone } from '../../features/quests/questsRepo'
 import { countPending, getSyncStatus, startSync, stopSync } from './engine'
 import type { RemoteBatch, RemoteStore } from './remote'
@@ -118,6 +120,29 @@ describe('first sign-in', () => {
     expect((await db.days.get('2026-11-08'))?.quests[0]?.done).toBe(true)
   })
 
+  it('treats a device with untouched starter workouts as untouched (nothing seeded, nothing duplicated)', async () => {
+    // The account: the Push starter edited on the phone, plus one workout of the user's.
+    const push = { ...starterById('starter-ppl-push')!, name: 'Push (heavy)', updatedAt: 5 }
+    cloud.put('workouts', push)
+    cloud.put('workouts', { id: 'w-own', name: 'Arms', items: [], updatedAt: 6 } as WorkoutTemplate)
+    // This device: brand new. Browsing the starters stores nothing.
+    await ensureSetup()
+    await ensureDay(today)
+    expect(workoutLists(await listStoredWorkouts()).programs).toHaveLength(3)
+    expect(await db.workouts.count()).toBe(0)
+
+    start()
+    await settled()
+    // Took the account's data (pristine path), so no starter quests came back either.
+    expect(cloud.records('quests')).toHaveLength(0)
+    expect((await getWorkout('starter-ppl-push'))?.name).toBe('Push (heavy)')
+    const lists = workoutLists(await listStoredWorkouts())
+    expect(lists.yours.map((w) => w.name)).toEqual(['Arms'])
+    const ppl = lists.programs[0]!.rows
+    expect(ppl.map((r) => r.workout.name)).toEqual(['Push (heavy)', 'Pull', 'Legs'])
+    expect(cloud.records('workouts')).toHaveLength(2)
+  })
+
   it('merges a used device into an account with data, matching starter quests by name', async () => {
     // Account made on the phone: starter quests with its own ids, "Train" ticked today.
     await ensureSetup()
@@ -200,6 +225,29 @@ describe('ongoing sync', () => {
     await deleteCustomMovement(id)
     await settled()
     expect((cloud.records('movements')[0] as CustomMovement).deleted).toBe(1)
+  })
+
+  it('keeps one copy of a starter edited on two devices (newer edit wins)', async () => {
+    const push = (await getWorkout('starter-ppl-push'))!
+    await saveWorkout({ ...push, name: 'Push A' })
+    await settled()
+    expect(cloud.records('workouts')).toEqual([expect.objectContaining({ id: 'starter-ppl-push', name: 'Push A' })])
+
+    // The other device edits the same starter later: same id, so it replaces this one.
+    vi.setSystemTime(new Date(`${today}T10:00:00`))
+    cloud.put('workouts', { ...starterById('starter-ppl-push')!, name: 'Push B', updatedAt: Date.now() } as WorkoutTemplate)
+    await vi.waitFor(async () => expect((await getWorkout('starter-ppl-push'))?.name).toBe('Push B'))
+    await settled()
+    expect(cloud.records('workouts')).toHaveLength(1)
+  })
+
+  it('syncs a deleted starter so it disappears on every device', async () => {
+    await deleteWorkout('starter-ul-upper')
+    await settled()
+    expect(cloud.records('workouts')).toEqual([expect.objectContaining({ id: 'starter-ul-upper', deleted: 1 })])
+    const lists = workoutLists(await listStoredWorkouts())
+    expect(lists.deletedStarters).toBe(1)
+    expect(lists.programs[1]!.rows.map((r) => r.workout.name)).toEqual(['Lower'])
   })
 
   it('waits while offline and uploads when back online', async () => {

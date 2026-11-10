@@ -7,6 +7,7 @@ import { TrainPage } from '../features/train/TrainPage'
 import { MovementLibraryPage } from '../features/train/library/MovementLibraryPage'
 import { MovementDetailPage } from '../features/train/library/MovementDetailPage'
 import { MovementFormPage } from '../features/train/library/MovementFormPage'
+import { WorkoutBuilderPage } from '../features/train/workouts/WorkoutBuilderPage'
 import { FoodPage } from '../features/food/FoodPage'
 import { SquadPage } from '../features/squad/SquadPage'
 import { ProfilePage } from '../features/profile/ProfilePage'
@@ -27,6 +28,8 @@ export const router = createBrowserRouter([
       { path: 'train/movements/new', element: <MovementFormPage /> },
       { path: 'train/movements/:id', element: <MovementDetailPage /> },
       { path: 'train/movements/:id/edit', element: <MovementFormPage /> },
+      { path: 'train/workouts/new', element: <WorkoutBuilderPage /> },
+      { path: 'train/workouts/:id', element: <WorkoutBuilderPage /> },
       { path: 'food', element: <FoodPage /> },
       { path: 'squad', element: <SquadPage /> },
       { path: 'me', element: <ProfilePage /> },

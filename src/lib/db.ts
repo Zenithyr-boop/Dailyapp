@@ -86,10 +86,42 @@ export interface Day extends SyncFields {
   waterMl?: number
 }
 
+/**
+ * One movement in a workout template. The target fields depend on how the
+ * movement is logged (its tracking type): a rep range for weight, bodyweight
+ * and assisted movements; seconds for timed ones; time (+ optional distance)
+ * for distance movements. See `features/train/workouts/targets.ts`.
+ */
+export interface WorkoutItem {
+  /** Unique within the workout (list keys, superset links). */
+  key: string
+  movementId: string
+  sets: number
+  /** Rep-based movements: target rep range, e.g. 6–8. */
+  repsMin?: number
+  repsMax?: number
+  /** Timed movements: seconds per set. Distance movements: target time. */
+  seconds?: number
+  /** Distance movements: target distance in metres (optional). */
+  meters?: number
+  /** Target RPE, 5–10 in half steps (optional). */
+  rpe?: number
+  /** Rest after each set, seconds. Ignored while it leads into the next movement of a superset. */
+  restSec: number
+  note?: string
+  /** Items next to each other with the same group form a superset. */
+  group?: string
+}
+
+/**
+ * A saved workout. Starter templates are bundled with the app and only stored
+ * here (same fixed `starter-…` id) once the user edits or deletes one.
+ */
 export interface WorkoutTemplate extends SyncFields {
   id: string
   name: string
-  movementIds: string[]
+  note?: string
+  items: WorkoutItem[]
 }
 
 export interface LoggedSet {
