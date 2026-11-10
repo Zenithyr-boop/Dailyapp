@@ -1,3 +1,4 @@
+import Dexie from 'dexie'
 import { db } from './db'
 
 describe('db', () => {
@@ -23,5 +24,22 @@ describe('db', () => {
       { ...base, id: 'b', date: '2026-11-08' },
     ])
     expect(await db.food.where('date').equals('2026-11-09').count()).toBe(1)
+  })
+})
+
+describe('v6 upgrade (onboarding)', () => {
+  it('marks profiles that existed before onboarding as done, and flags them for upload', async () => {
+    db.close()
+    await Dexie.delete('chalk')
+    const old = new Dexie('chalk')
+    old.version(5).stores({ profile: 'id, dirty' })
+    await old.open()
+    await old.table('profile').put({ id: 'me', displayName: 'Sam', units: 'metric', rank: 'D', bestLevel: 6, goals: {}, updatedAt: 1 })
+    old.close()
+
+    await db.open()
+    const p = await db.profile.get('me')
+    expect(p).toMatchObject({ onboarding: 'done', dirty: 1, rank: 'D' })
+    expect(p!.updatedAt).toBeGreaterThan(1)
   })
 })

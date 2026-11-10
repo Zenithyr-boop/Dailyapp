@@ -99,7 +99,10 @@ Rules:
   Only the level trial exists so far; Train/Body/Food add theirs.
 
 ## Data model (Firestore, mirrors local Dexie tables)
-- `users/{uid}` profile: units (metric/imperial), goals, earned rank and best level (both only go up).
+- `users/{uid}` profile: display name, units (metric/imperial) and `heightUnits` (cm/ftin, unset = follows units),
+  `onboarding` (done/skipped), `body` (sex, birth year, height cm, weight kg, activity), `plan` (lose/gain + kg per
+  week; unset = maintain), `goals` (kcal, protein/fat/carbs g, `macroMode` auto/custom, steps, sleep, water ml),
+  earned rank and best level (both only go up).
   XP, level and streak are never stored: they're derived from the days (`progressFromDays` in `lib/xp.ts`).
 - `users/{uid}/quests/{id}` the user's quest list (title, xp, type, target/unit/step, order)
 - `users/{uid}/days/{YYYY-MM-DD}` a copy of that day's quests + progress, steps, sleep, weight, water
@@ -153,6 +156,22 @@ squad data readable by members only; community posts readable by all signed-in u
 - `records.ts`: Epley e1RM, PRs vs earlier sessions (none on a movement's first log), "last time", totals.
 - `progression.ts` — tunable by the coach: next-time rule, +2.5 kg lower body / +1.25 kg upper body (by primary
   muscle), plate steps.
+
+## Onboarding & goals (`src/features/onboarding`, `src/features/profile/goals`)
+- First run: `OnboardingGate` (wraps the app shell) sends a profile without `onboarding` to `/welcome` — one
+  question per screen (name, units, sex, birth year, height, weight, activity, goal, rate), then targets, then
+  starter quests (`starterQuests.ts`, editable by the coach). Every question can be skipped; "Skip setup" keeps the
+  default quests. Answers stay in a draft until the end. "Sign in" on the first screen: an account whose profile
+  is already onboarded closes the flow. Profiles from before onboarding were marked done by the db v6 upgrade.
+- Skipping stores nothing but the flag, so an untouched device still counts as pristine on first sign-in.
+- All tunable numbers live in `coachTargets.ts`: Mifflin-St Jeor constants ("prefer not to say" = midpoint),
+  activity multipliers, 7,700 kcal/kg, loss cap 1% of body weight a week, calorie floors by sex, protein g/kg by
+  goal, BMI-30 reference weight for heavier people, fat 25% of kcal with a g/kg minimum, rate options (kg and lb).
+  The maths is `targets.ts` (unit-tested). Macros: protein, then fat, carbs are the rest (fat drops to its minimum
+  before carbs go below 0). Fastest rate shows a gentle note; cap and floor show what happened.
+- Me → Goals (`/me/goals`): edit everything, targets recalculate live; draft until Save, leaving asks first.
+  "Set my own numbers" = `macroMode: 'custom'` (warns below the floor, doesn't block).
+- Targets are saved, not derived on load: changing `coachTargets.ts` affects a user the next time they save goals.
 
 ## Account sync (`src/lib/sync`)
 - Dexie is the source of truth on the device; Firestore is the cloud copy. Signed out = local only.

@@ -230,7 +230,17 @@ export function isPristine(
 ): boolean {
   if (data.otherRecords > 0) return false
   const p = data.profile
-  if (p && (p.displayName !== '' || p.units !== 'metric' || Object.keys(p.goals ?? {}).length > 0)) return false
+  if (
+    p &&
+    (p.displayName !== '' ||
+      p.units !== 'metric' ||
+      p.heightUnits !== undefined ||
+      p.body !== undefined ||
+      p.plan !== undefined ||
+      Object.keys(p.goals ?? {}).length > 0)
+  ) {
+    return false
+  }
   if (data.quests.length !== defaults.length) return false
   const sameDefaults = data.quests.every((q) => {
     const d = defaults[q.order]
