@@ -41,7 +41,7 @@ export function SessionHistory() {
                         <span className="shrink-0 text-sm text-muted">{dateLabel.format(fromDayKey(s.date))}</span>
                       </span>
                       <span className="mt-0.5 block truncate text-sm text-muted">
-                        {formatClock(totals.duration)} · {totals.setsDone} sets
+                        {formatClock(totals.duration)} · {totals.setsDone} set{totals.setsDone === 1 ? '' : 's'}
                         {totals.volumeKg > 0 && ` · ${Math.round(displayWeight(totals.volumeKg, units)).toLocaleString()} ${unitLabel(units)}`}
                       </span>
                     </span>

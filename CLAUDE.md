@@ -104,7 +104,8 @@ Rules:
 - `users/{uid}/quests/{id}` the user's quest list (title, xp, type, target/unit/step, order)
 - `users/{uid}/days/{YYYY-MM-DD}` a copy of that day's quests + progress, steps, sleep, weight, water
   (edits to quests apply to today; past days stay frozen)
-- `users/{uid}/workouts/{id}` workout templates (items: movement, sets, target by tracking type, RPE, rest, note, superset group); `users/{uid}/sessions/{id}` logged sessions (sets: kg, reps, rpe)
+- `users/{uid}/workouts/{id}` workout templates (items: movement, sets, target by tracking type, RPE, rest, note, superset group); `users/{uid}/sessions/{id}` logged sessions (exercises with targets and sets: kg, reps,
+  rpe, seconds, metres, done; no `finishedAt` = still in progress)
 - `users/{uid}/food/{id}` food log entries with macros
 - `users/{uid}/programs/{id}` active program state (day N, strict mode)
 - `users/{uid}/movements/{id}` the user's custom movements (ids start with `custom-`)
@@ -138,6 +139,20 @@ squad data readable by members only; community posts readable by all signed-in u
 - Starter templates (`starters.ts`, editable by the coach) are bundled with fixed `starter-…` ids and stored only
   once edited or deleted, so new devices stay "untouched" on first sign-in and devices never duplicate them.
   Never change a starter id.
+
+## Sessions / live logging (`src/features/train/sessions`)
+- One session in progress at a time (`/train/session`); a "Resume session" banner shows on Quests and Train.
+  Every edit is written to Dexie at once (`sessionsRepo.ts`), so a refresh never loses a set. Weight fields
+  commit on blur/Enter; ticking a set saves it.
+- Weights are stored in kg. `weights.ts` shows them in the user's units (profile `units`, toggle on Me and in the
+  logger), rounding converted values to `PLATE_STEP`; values typed in that unit come back exactly.
+- Rest timer (`restTimer.ts`): starts on tick with the movement's rest (inside a superset only after the last
+  movement), end time in device-only meta, beep + vibrate at zero. Screen Wake Lock while a session is open
+  (browser/PWA only; the APK will need a native keep-awake plugin).
+- Finishing keeps only ticked sets and ticks today's quest titled "Train" (its XP comes from the day as usual).
+- `records.ts`: Epley e1RM, PRs vs earlier sessions (none on a movement's first log), "last time", totals.
+- `progression.ts` — tunable by the coach: next-time rule, +2.5 kg lower body / +1.25 kg upper body (by primary
+  muscle), plate steps.
 
 ## Account sync (`src/lib/sync`)
 - Dexie is the source of truth on the device; Firestore is the cloud copy. Signed out = local only.

@@ -1,13 +1,12 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
-import { db, type Session } from '../../../lib/db'
+import { db, getMeta, type Session } from '../../../lib/db'
 import { QuestsPage } from '../../quests/QuestsPage'
 import { TrainPage } from '../TrainPage'
 import { starterById } from '../workouts/starters'
-import { getMeta } from '../../../lib/db'
 import { SessionPage } from './SessionPage'
 import { SessionSummaryPage } from './SessionSummaryPage'
-import { getActiveSession, targetFromItem } from './sessionsRepo'
+import { getActiveSession, startSession, targetFromItem } from './sessionsRepo'
 
 function renderAt(path: string) {
   const router = createMemoryRouter(
@@ -116,11 +115,10 @@ describe('live session logging', { timeout: 25_000 }, () => {
   })
 
   it('shows a resume banner on the Quests screen while a session is open', async () => {
-    renderAt('/train')
-    fireEvent.click(await screen.findByRole('button', { name: 'Start empty session' }))
-    await vi.waitFor(async () => expect(await getActiveSession()).toBeDefined(), { timeout: 8000 })
+    await startSession(undefined, () => 'weight_reps')
     const router = renderAt('/quests')
-    const banner = await screen.findByRole('link', { name: /Resume session/ })
+    const banner = await screen.findByRole('link', { name: /Resume session/ }, { timeout: 5000 })
+    expect(banner).toHaveTextContent('Workout')
     fireEvent.click(banner)
     expect(router.state.location.pathname).toBe('/train/session')
   })
