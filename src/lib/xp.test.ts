@@ -2,7 +2,9 @@ import {
   ALL_QUESTS_BONUS,
   BASE_XP,
   clampQuestXp,
+  dayTotalXp,
   dayXp,
+  progressFromDays,
   DIFFICULTIES,
   difficultyForXp,
   isDayComplete,
@@ -126,5 +128,13 @@ describe('dayXp', () => {
   it('gives nothing for an empty day', () => {
     expect(dayXp([])).toBe(0)
     expect(isDayComplete([])).toBe(false)
+  })
+})
+
+describe('day bonuses (finished programs)', () => {
+  it('adds a day’s bonuses to its XP and to the lifetime total', () => {
+    const day = { date: '2026-11-09', quests: [{ xp: 40, done: true }], bonuses: [{ id: 'p1', label: '66-day reset', xp: 1320 }] }
+    expect(dayTotalXp(day)).toBe(40 + ALL_QUESTS_BONUS + 1320)
+    expect(progressFromDays([day], '2026-11-09').totalXp).toBe(40 + ALL_QUESTS_BONUS + 1320)
   })
 })

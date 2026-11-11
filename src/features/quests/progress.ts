@@ -1,7 +1,7 @@
 /** Pure quest logic: streaks, history, count-quest progress. No database here. */
 import type { Day, Quest, QuestDef } from '../../lib/db'
 import { addDays } from '../../lib/day'
-import { dayXp, isDayComplete } from '../../lib/xp'
+import { dayTotalXp, isDayComplete } from '../../lib/xp'
 
 /** Round away float noise from repeated + steps (0.1 + 0.2 …). */
 export function roundAmount(n: number): number {
@@ -16,10 +16,11 @@ export function isQuestDone(q: Pick<Quest, 'kind' | 'target' | 'value' | 'done'>
 
 /** A fresh, unchecked daily copy of a quest definition. */
 export function freshQuest(def: QuestDef): Quest {
-  const { id, title, xp, kind, target, unit, step, link } = def
+  const { id, title, xp, kind, target, unit, step, link, programId } = def
+  const tag = programId ? { programId } : {}
   return kind === 'count'
-    ? { id, title, xp, kind, target, unit, step, value: 0, done: false }
-    : { id, title, xp, kind, done: false, ...(link ? { link } : {}) }
+    ? { id, title, xp, kind, target, unit, step, value: 0, done: false, ...tag }
+    : { id, title, xp, kind, done: false, ...(link ? { link } : {}), ...tag }
 }
 
 /**
@@ -78,7 +79,7 @@ export function historyCell(date: string, day: Day | undefined, firstDate: strin
   }
   const done = day.quests.filter((q) => q.done).length
   const status = isDayComplete(day.quests) ? 'full' : done > 0 ? 'partial' : 'missed'
-  return { date, status, done, total: day.quests.length, xp: dayXp(day.quests) }
+  return { date, status, done, total: day.quests.length, xp: dayTotalXp(day) }
 }
 
 /**

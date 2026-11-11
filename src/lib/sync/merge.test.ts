@@ -127,6 +127,15 @@ describe('mergeDay — quest lists and other fields', () => {
     expect(merged.updatedAt).toBe(200)
     expect(merged).not.toHaveProperty('dirty')
   })
+
+  it('keeps every program bonus from both copies, once per program', () => {
+    const a = { id: 'p1', label: '66-day reset', xp: 1320 }
+    const b = { id: 'p2', label: 'Custom', xp: 600 }
+    const merged = mergeDay(day(100, [], { bonuses: [a] }), day(200, [], { bonuses: [a, b] }), true)
+    expect(merged.bonuses).toEqual([a, b])
+    expect(mergeDay(day(300, []), day(200, [], { bonuses: [a] }), false).bonuses).toEqual([a])
+    expect(mergeDay(day(300, []), day(200, []), false)).not.toHaveProperty('bonuses')
+  })
 })
 
 describe('mergeProfile', () => {

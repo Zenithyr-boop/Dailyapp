@@ -32,6 +32,11 @@ export const LINK_SOURCES: readonly SourceInfo[] = [
   { id: 'weighIn', label: 'Weigh-in', help: 'Ticks when you log a weigh-in that day (Body).' },
   { id: 'water', label: 'Water', target: { min: 250, max: 10_000, default: 2500, label: 'Water' }, help: 'Ticks when the day’s water reaches the amount.' },
   { id: 'workout', label: 'Workout', help: 'Ticks when you finish a workout that day (Train).' },
+  {
+    id: 'photo',
+    label: 'Progress photo',
+    help: 'Ticks when you add a progress photo for that day (Body → Photos). Photos stay on this device, so it never unticks itself.',
+  },
 ]
 
 export const sourceInfo = (id: LinkSource): SourceInfo => LINK_SOURCES.find((s) => s.id === id)!
@@ -82,6 +87,8 @@ export function defaultTitle(link: QuestLink, units: UnitSystem): string {
       return `Drink ${formatWater(l.target!, units)} water`
     case 'workout':
       return 'Train'
+    case 'photo':
+      return 'Take a progress photo'
   }
 }
 
@@ -97,6 +104,8 @@ export interface LinkData {
   foodEntries: number
   /** Finished workouts that day. */
   workouts: number
+  /** Progress photos for that day on this device (photos never sync). */
+  photos?: number
   goals: { kcal?: number; proteinG?: number }
 }
 
@@ -119,6 +128,8 @@ export function evaluateLink(link: QuestLink, d: LinkData): LinkResult {
       return { done: d.weightKg !== undefined }
     case 'workout':
       return { done: d.workouts > 0 }
+    case 'photo':
+      return { done: (d.photos ?? 0) > 0 }
     case 'protein':
       if (!d.goals.proteinG) return { done: false, missingGoal: 'protein' }
       return { done: d.proteinG >= d.goals.proteinG }
@@ -142,6 +153,8 @@ export function describeLink(link: QuestLink, d: LinkData, units: UnitSystem): s
       return d.weightKg === undefined ? 'No weigh-in yet' : 'Weighed in'
     case 'workout':
       return d.workouts === 0 ? 'No workout finished yet' : d.workouts === 1 ? 'Workout finished' : `${d.workouts} workouts finished`
+    case 'photo':
+      return d.photos ? 'Photo added' : 'No photo yet'
     case 'protein':
       return d.goals.proteinG ? `${num.format(d.proteinG)} / ${num.format(d.goals.proteinG)} g protein` : 'Set your protein goal in Me → Goals'
     case 'calories':
@@ -169,6 +182,8 @@ export function linkSummary(link: QuestLink, units: UnitSystem): string {
       return 'Weighed in that day'
     case 'workout':
       return 'Finished a workout that day'
+    case 'photo':
+      return 'Progress photo that day'
   }
 }
 
@@ -200,5 +215,5 @@ export function targetFromInput(source: LinkSource, value: number, units: UnitSy
 
 /** Unit label next to the form's number. */
 export function inputUnit(source: LinkSource, units: UnitSystem): string {
-  return { steps: 'steps', sleep: 'hours', water: units === 'metric' ? 'L' : 'oz', calories: '± kcal', protein: '', weighIn: '', workout: '' }[source]
+  return { steps: 'steps', sleep: 'hours', water: units === 'metric' ? 'L' : 'oz', calories: '± kcal', protein: '', weighIn: '', workout: '', photo: '' }[source]
 }

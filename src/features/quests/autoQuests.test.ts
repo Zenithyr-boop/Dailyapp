@@ -66,3 +66,22 @@ describe('automatic quests', () => {
     expect((await quest(today, 'Walk 8,000 steps')).done).toBe(false)
   })
 })
+
+describe('progress photo quests', () => {
+  it('tick when a photo is added for the day, and never untick (photos stay on one device)', async () => {
+    const today = dayKeyAt()
+    await addQuest({ title: 'Take a progress photo', xp: 20, kind: 'check', link: { source: 'photo' } })
+    await refreshAutoQuests(today)
+    expect((await quest(today, 'Take a progress photo')).done).toBe(false)
+
+    const image = new ArrayBuffer(4)
+    await db.photos.add({ id: 'ph1', date: today, thumb: image, type: 'image/jpeg', width: 10, height: 10, addedAt: Date.now() })
+    await refreshAutoQuests(today)
+    expect((await quest(today, 'Take a progress photo')).done).toBe(true)
+
+    // Another device has no photos: the tick it synced must stay.
+    await db.photos.clear()
+    expect(await refreshAutoQuests(today)).toEqual([])
+    expect((await quest(today, 'Take a progress photo')).done).toBe(true)
+  })
+})
