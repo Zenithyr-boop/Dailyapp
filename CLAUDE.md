@@ -50,7 +50,9 @@ It ships as:
   Android icon/splash size
 - APK builds (Claude runs these; needs Android Studio installed, it bundles Java): in `android/`, with
   `JAVA_HOME="C:/Program Files/Android/Android Studio/jbr"`: `./gradlew assembleDebug`, `./gradlew assembleRelease`,
-  `./gradlew signingReport` (SHA-1 fingerprints)
+  `./gradlew signingReport` (SHA-1 fingerprints). Output: `android/app/build/outputs/apk/<debug|release>/`.
+  The wrapper is Gradle 9.1 (Android Studio's bundled Java 25 can't run Capacitor's default 8.14); keep it ≥ 9.1.
+  `android/local.properties` (git-ignored) has `sdk.dir=C:/Users/kevin/AppData/Local/Android/Sdk` (forward slashes).
 
 ## Folder layout
 ```
