@@ -1,5 +1,7 @@
+import { Link } from 'react-router'
+import { ChevronRightIcon } from '../../components/icons'
 import { Panel } from '../../components/Panel'
-import { fromDayKey } from '../../lib/dates'
+import { fromDayKey } from '../../lib/day'
 import { bestRun, type HistoryCell, type HistoryStatus } from './progress'
 
 const dayLabel = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
@@ -19,7 +21,7 @@ function describe(c: HistoryCell): string {
   return `${date}: ${c.done} of ${c.total} quests, ${fmt.format(c.xp)} XP`
 }
 
-/** Last 30 days as a grid of blocks, plus a few totals. */
+/** Last 30 days as a grid of blocks, plus a few totals and a link to the full history. */
 export function HistoryPanel({ cells }: { cells: HistoryCell[] }) {
   const full = cells.filter((c) => c.status === 'full').length
   const xp = cells.reduce((sum, c) => sum + c.xp, 0)
@@ -54,6 +56,13 @@ export function HistoryPanel({ cells }: { cells: HistoryCell[] }) {
         <Stat label="XP earned" value={fmt.format(xp)} />
         <Stat label="Best streak" value={bestRun(cells)} />
       </dl>
+      <Link
+        to="/quests/history"
+        className="group -mx-4 -mb-4 mt-4 flex min-h-touch items-center justify-between border-t border-line-soft px-4 font-display text-sm font-bold uppercase tracking-wider hover:text-accent"
+      >
+        Day history
+        <ChevronRightIcon size={18} className="text-faint group-hover:text-accent" />
+      </Link>
     </Panel>
   )
 }
