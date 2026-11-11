@@ -7,10 +7,12 @@ const fmt = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 })
 interface CountQuestRowProps {
   quest: Quest
   onStep: (direction: 1 | -1) => void
+  /** Read-only (a past day outside the grace period): no − / + buttons. */
+  locked?: boolean
 }
 
 /** A number-target quest (e.g. 3 L water): progress bar plus − / + buttons. */
-export function CountQuestRow({ quest, onStep }: CountQuestRowProps) {
+export function CountQuestRow({ quest, onStep, locked = false }: CountQuestRowProps) {
   const value = quest.value ?? 0
   const target = quest.target ?? 1
   const unit = quest.unit ? ` ${quest.unit}` : ''
@@ -47,25 +49,27 @@ export function CountQuestRow({ quest, onStep }: CountQuestRowProps) {
           <div className="h-full bg-accent" style={{ width: `${fraction * 100}%` }} />
         </div>
       </div>
-      <div className="flex shrink-0 gap-1">
-        <button
-          type="button"
-          onClick={() => onStep(-1)}
-          disabled={value <= 0}
-          aria-label={`Remove ${step} from ${quest.title}`}
-          className="grid size-touch place-items-center border border-panel-edge text-muted hover:border-accent hover:text-accent disabled:opacity-40 disabled:hover:border-panel-edge disabled:hover:text-muted"
-        >
-          <MinusIcon size={20} />
-        </button>
-        <button
-          type="button"
-          onClick={() => onStep(1)}
-          aria-label={`Add ${step} to ${quest.title}`}
-          className="grid size-touch place-items-center bg-accent text-on-accent hover:bg-text"
-        >
-          <PlusIcon size={20} />
-        </button>
-      </div>
+      {!locked && (
+        <div className="flex shrink-0 gap-1">
+          <button
+            type="button"
+            onClick={() => onStep(-1)}
+            disabled={value <= 0}
+            aria-label={`Remove ${step} from ${quest.title}`}
+            className="grid size-touch place-items-center border border-panel-edge text-muted hover:border-accent hover:text-accent disabled:opacity-40 disabled:hover:border-panel-edge disabled:hover:text-muted"
+          >
+            <MinusIcon size={20} />
+          </button>
+          <button
+            type="button"
+            onClick={() => onStep(1)}
+            aria-label={`Add ${step} to ${quest.title}`}
+            className="grid size-touch place-items-center bg-accent text-on-accent hover:bg-text"
+          >
+            <PlusIcon size={20} />
+          </button>
+        </div>
+      )}
       <QuestXp xp={quest.xp} done={quest.done} />
     </div>
   )

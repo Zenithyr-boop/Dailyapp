@@ -11,8 +11,11 @@ import { estimateSeconds, formatDuration } from './duration'
 import { IconButton } from './fields'
 import { deleteWorkout, duplicateWorkout, listStoredWorkouts, restoreStarters, workoutLists } from './workoutsRepo'
 
-/** The Train tab's workouts: the user's own, then the starter templates by program. */
-export function WorkoutsSection() {
+/**
+ * The Train tab's workouts: the user's own, then the starter templates by program.
+ * `date` = an earlier day being viewed: starting a workout logs it for that day.
+ */
+export function WorkoutsSection({ date }: { date?: string }) {
   const stored = useLiveQuery(listStoredWorkouts, [])
   const lists = useMemo(() => stored && workoutLists(stored), [stored])
   const [confirm, setConfirm] = useState<string | null>(null)
@@ -34,7 +37,7 @@ export function WorkoutsSection() {
       workout={w}
       edited={edited}
       confirming={confirm === w.id}
-      onStart={() => start(w)}
+      onStart={() => start(w, date)}
       onAskDelete={() => setConfirm(w.id)}
       onCancelDelete={() => setConfirm(null)}
       onDelete={async () => {
@@ -58,7 +61,7 @@ export function WorkoutsSection() {
           </Link>
         }
       >
-        <Button variant="secondary" className="mb-4 w-full" onClick={() => start()}>
+        <Button variant="secondary" className="mb-4 w-full" onClick={() => start(undefined, date)}>
           <PlayIcon size={18} />
           Start empty session
         </Button>

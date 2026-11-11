@@ -7,6 +7,7 @@ import { ChevronLeftIcon, PlusIcon } from '../../../components/icons'
 import { PageHeader } from '../../../components/PageHeader'
 import { Panel } from '../../../components/Panel'
 import type { LoggedSet, Session, SessionExercise } from '../../../lib/db'
+import { dayLabel, useToday } from '../../../lib/day'
 import { UnitToggle } from '../../profile/UnitToggle'
 import { useUnits } from '../../profile/units'
 import type { TrackingType } from '../library/types'
@@ -60,6 +61,7 @@ export function SessionPage() {
   const { movements, error, retry } = useMovements()
   const byId = useMemo(() => new Map(movements?.map((m) => [m.id, m])), [movements])
   const units = useUnits()
+  const today = useToday()
   const now = useNow(1000, !!session)
   const { start, dialog: startDialog } = useStartSession()
   const [confirm, setConfirm] = useState<'finish' | 'discard' | { remove: SessionExercise } | null>(null)
@@ -142,7 +144,7 @@ export function SessionPage() {
       <BackLink />
       <PageHeader
         title={s.name}
-        kicker="Session in progress"
+        kicker={s.date === today ? 'Session in progress' : `Logging for ${dayLabel(s.date, today)}`}
         aside={
           <Button onClick={() => setConfirm(hasDoneSets(s) ? 'finish' : 'discard')} className="shrink-0">
             Finish
