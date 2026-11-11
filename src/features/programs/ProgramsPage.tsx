@@ -91,8 +91,8 @@ function ActiveProgram({ program, progress }: { program: ProgramState; progress:
       <Panel title={program.name} aside={program.strict ? 'Strict · a miss restarts' : 'A miss is marked, not a restart'}>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <p className="font-display font-extrabold leading-none">
-            <span className="text-[56px] tabular-nums">Day {progress.dayNumber}</span>
-            <span className="ml-2 text-2xl text-muted">of {program.length}</span>
+            <span className="text-[56px] tabular-nums">Day {progress.dayNumber}</span>{' '}
+            <span className="ml-1 text-2xl text-muted">of {program.length}</span>
           </p>
           <dl className="flex gap-6 text-right">
             <Stat label="Done" value={progress.daysDone} />

@@ -156,15 +156,13 @@ function Builder({ template }: { template: ProgramTemplate }) {
             </div>
           )}
 
-          {template.strictChoice ? (
+          {template.strictChoice && (
             <CheckRow
               checked={strict}
               onChange={setStrict}
               title="Strict mode"
               sub="Miss any rule and the program restarts at day 1. Past attempts are kept."
             />
-          ) : (
-            <p className="mt-4 text-sm text-muted">A missed day is marked on the grid but doesn’t restart the program.</p>
           )}
         </Panel>
 

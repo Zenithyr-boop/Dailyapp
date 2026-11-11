@@ -59,8 +59,7 @@ export const TEMPLATES: readonly ProgramTemplate[] = [
   {
     id: '66-day-reset',
     name: '66-day reset',
-    blurb: 'Pick the habits you want to lock in and keep them for 66 days. A missed day is marked, not a restart.',
-    length: 66,
+    blurb: 'Pick the habits you want to lock in and keep them for 66 days. A missed day is marked, not a restart.',    length: 66,
     strict: false,
     strictChoice: false,
     custom: false,
