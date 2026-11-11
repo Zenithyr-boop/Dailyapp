@@ -4,7 +4,7 @@
  * we only check for a new level or rank to celebrate.
  */
 import { db, getMeta, setMeta, type Day, type Profile, type Quest, type QuestDef, type QuestFields } from '../../lib/db'
-import { toDayKey } from '../../lib/dates'
+import { canEditQuests, getToday } from '../../lib/day'
 import { evaluateRank, rankIndex, type Rank } from '../../lib/rank'
 import { clampQuestXp, progressFromDays } from '../../lib/xp'
 import { addToCount, freshQuest, mergeQuests } from './progress'
@@ -65,13 +65,14 @@ export async function listQuestDefs(): Promise<QuestDef[]> {
 }
 
 /** Make sure a record exists for `date`, starting every quest unchecked. */
-export async function ensureDay(date: string = toDayKey()): Promise<void> {
+export async function ensureDay(date?: string): Promise<void> {
+  const key = date ?? (await getToday())
   await db.transaction('rw', db.days, db.quests, async () => {
-    if (await db.days.get(date)) return
+    if (await db.days.get(key)) return
     const defs = await listQuestDefs()
-    await db.days.put({ date, quests: defs.map(freshQuest), updatedAt: Date.now() })
+    await db.days.put({ date: key, quests: defs.map(freshQuest), updatedAt: Date.now() })
   })
-  await checkMilestones(date)
+  await checkMilestones()
 }
 
 /**
@@ -80,11 +81,12 @@ export async function ensureDay(date: string = toDayKey()): Promise<void> {
  * Writes nothing on a normal quest tick, so it costs no sync traffic.
  * `celebrate: false` is used when the level came from another device's data.
  */
-export async function checkMilestones(today: string = toDayKey(), { celebrate = true } = {}): Promise<void> {
+export async function checkMilestones(today?: string, { celebrate = true } = {}): Promise<void> {
+  const day = today ?? (await getToday())
   await db.transaction('rw', db.profile, db.days, db.meta, async () => {
     const profile = await db.profile.get('me')
     if (!profile) return
-    const { level } = progressFromDays(await db.days.toArray(), today)
+    const { level } = progressFromDays(await db.days.toArray(), day)
     const rank = evaluateRank({ level }, profile.rank)
     const rankUp = rankIndex(rank) > rankIndex(profile.rank)
     if (level <= profile.bestLevel && !rankUp) return
@@ -101,14 +103,23 @@ export async function dismissCelebration(): Promise<void> {
   await setMeta(CELEBRATION_KEY, undefined)
 }
 
+/** Quests can be changed today and yesterday only (one day's grace), so streaks can't be faked. */
+export class DayLockedError extends Error {
+  constructor(date: string) {
+    super(`Quests for ${date} can no longer be changed`)
+  }
+}
+
 async function updateDayQuest(date: string, id: string, change: (q: Quest) => Quest): Promise<void> {
+  const today = await getToday()
+  if (!canEditQuests(date, today)) throw new DayLockedError(date)
   await db.transaction('rw', db.days, async () => {
     const day = await db.days.get(date)
     if (!day) return
     const quests = day.quests.map((q) => (q.id === id ? { ...change(q), at: Date.now() } : q))
     await db.days.put({ ...day, quests, updatedAt: Date.now() })
   })
-  await checkMilestones()
+  await checkMilestones(today)
 }
 
 export function setQuestDone(date: string, id: string, done: boolean): Promise<void> {
@@ -122,7 +133,7 @@ export function stepCount(date: string, id: string, direction: 1 | -1): Promise<
 
 /** Apply the current quest definitions to today's record (past days stay frozen). */
 async function syncToday(): Promise<void> {
-  const date = toDayKey()
+  const date = await getToday()
   await db.transaction('rw', db.days, db.quests, async () => {
     const defs = await listQuestDefs()
     const day: Day | undefined = await db.days.get(date)

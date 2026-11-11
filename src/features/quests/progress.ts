@@ -1,6 +1,6 @@
 /** Pure quest logic: streaks, history, count-quest progress. No database here. */
 import type { Day, Quest, QuestDef } from '../../lib/db'
-import { addDays } from '../../lib/dates'
+import { addDays } from '../../lib/day'
 import { dayXp, isDayComplete } from '../../lib/xp'
 
 /** Round away float noise from repeated + steps (0.1 + 0.2 …). */
@@ -58,6 +58,17 @@ export interface HistoryCell {
   xp: number
 }
 
+/** One day's history cell. No record after the user's first day = missed. */
+export function historyCell(date: string, day: Day | undefined, firstDate: string | undefined): HistoryCell {
+  if (!day || day.deleted) {
+    const status = !firstDate || date < firstDate ? 'before-start' : 'missed'
+    return { date, status, done: 0, total: 0, xp: 0 }
+  }
+  const done = day.quests.filter((q) => q.done).length
+  const status = isDayComplete(day.quests) ? 'full' : done > 0 ? 'partial' : 'missed'
+  return { date, status, done, total: day.quests.length, xp: dayXp(day.quests) }
+}
+
 /**
  * The last `count` days ending today, oldest first. Days before the user's
  * first record are `before-start`; days without a record after that are missed.
@@ -73,15 +84,7 @@ export function buildHistory(
   const cells: HistoryCell[] = []
   for (let i = count - 1; i >= 0; i--) {
     const date = addDays(today, -i)
-    const day = byDate.get(date)
-    if (!day) {
-      const status = !firstDate || date < firstDate ? 'before-start' : 'missed'
-      cells.push({ date, status, done: 0, total: 0, xp: 0 })
-      continue
-    }
-    const done = day.quests.filter((q) => q.done).length
-    const status = isDayComplete(day.quests) ? 'full' : done > 0 ? 'partial' : 'missed'
-    cells.push({ date, status, done, total: day.quests.length, xp: dayXp(day.quests) })
+    cells.push(historyCell(date, byDate.get(date), firstDate))
   }
   return cells
 }

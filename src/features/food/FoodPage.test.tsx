@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { db } from '../../lib/db'
-import { addDays, toDayKey } from '../../lib/dates'
+import { addDays, dayKeyAt } from '../../lib/day'
 import { ensureSetup } from '../quests/questsRepo'
 import { AddFoodPage } from './AddFoodPage'
 import { FoodPage } from './FoodPage'
@@ -37,7 +37,7 @@ beforeEach(async () => {
 
 describe('Food tab', { timeout: 15_000 }, () => {
   it('shows the day’s totals against the targets and each meal', async () => {
-    await logPortion(toDayKey(), 'breakfast', portionOf(banana, { grams: 200 }))
+    await logPortion(dayKeyAt(), 'breakfast', portionOf(banana, { grams: 200 }))
     renderAt('/food')
     expect(await screen.findByRole('progressbar', { name: /Calories: 178 of 2,000 kcal, 1,822 kcal left/ })).toBeInTheDocument()
     expect(screen.getByRole('progressbar', { name: /Protein: 2\.2 of 150 g/ })).toBeInTheDocument()
@@ -48,7 +48,7 @@ describe('Food tab', { timeout: 15_000 }, () => {
   })
 
   it('copies yesterday into today', async () => {
-    await logPortion(addDays(toDayKey(), -1), 'lunch', portionOf(banana, { grams: 100 }))
+    await logPortion(addDays(dayKeyAt(), -1), 'lunch', portionOf(banana, { grams: 100 }))
     renderAt('/food')
     fireEvent.click(await screen.findByRole('button', { name: /Copy yesterday \(1 food\)/ }))
     expect(await screen.findByText('Copied 1 food from the day before.')).toBeInTheDocument()
@@ -56,7 +56,7 @@ describe('Food tab', { timeout: 15_000 }, () => {
   })
 
   it('edits and removes an entry', async () => {
-    await logPortion(toDayKey(), 'snacks', portionOf(banana, { grams: 100 }))
+    await logPortion(dayKeyAt(), 'snacks', portionOf(banana, { grams: 100 }))
     renderAt('/food')
     fireEvent.click(await screen.findByRole('button', { name: /Banana/ }))
     const dialog = await screen.findByRole('dialog', { name: 'Banana' })

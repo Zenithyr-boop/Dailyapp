@@ -235,6 +235,7 @@ export function isPristine(
     (p.displayName !== '' ||
       p.units !== 'metric' ||
       p.heightUnits !== undefined ||
+      p.dayStartHour !== undefined ||
       p.body !== undefined ||
       p.plan !== undefined ||
       Object.keys(p.goals ?? {}).length > 0)

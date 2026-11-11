@@ -7,7 +7,7 @@ import { ChevronLeftIcon } from '../../../components/icons'
 import { PageHeader } from '../../../components/PageHeader'
 import { Panel } from '../../../components/Panel'
 import { StatBlock } from '../../../components/StatBlock'
-import { fromDayKey } from '../../../lib/dates'
+import { fromDayKey } from '../../../lib/day'
 import { useUnits } from '../../profile/units'
 import type { TrackingType } from '../library/types'
 import { useMovements } from '../library/useMovements'
@@ -20,9 +20,10 @@ const dateLabel = new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'nu
 const timeLabel = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' })
 
 const TRAIN_NOTES: Record<TrainQuestResult, string> = {
-  checked: 'Train quest done: its XP is added to today.',
-  already: 'Train quest was already done today.',
-  missing: 'No “Train” quest today, so no XP was added. Add one in Edit quests.',
+  checked: 'Train quest done: its XP is added to that day.',
+  already: 'Train quest was already done that day.',
+  missing: 'No “Train” quest that day, so no XP was added. Add one in Edit quests.',
+  locked: 'Logged for an earlier day: quests only change today and yesterday, so no XP was added.',
 }
 
 /** A finished session: totals, new records, next-time hints and every set. Shown right after Finish too. */
