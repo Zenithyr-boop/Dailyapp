@@ -63,6 +63,7 @@ export function NumberField({
   placeholder?: string
   className?: string
   'aria-label'?: string
+  'aria-describedby'?: string
 }) {
   const factor = 10 ** precision
   const round = (n: number) => Math.round(n * factor) / factor

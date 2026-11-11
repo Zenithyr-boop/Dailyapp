@@ -58,9 +58,21 @@ export interface HistoryCell {
   xp: number
 }
 
-/** One day's history cell. No record after the user's first day = missed. */
+/** True for a record that holds quests (not just body data logged for an old day). */
+export const isQuestDay = (d: Day): boolean => !d.deleted && d.quests.length > 0
+
+/** The user's first quest day: where history and misses start. */
+export function firstQuestDate(days: readonly Day[]): string | undefined {
+  return days.reduce<string | undefined>((min, d) => (isQuestDay(d) && (!min || d.date < min) ? d.date : min), undefined)
+}
+
+/**
+ * One day's history cell. No record after the user's first day = missed.
+ * A record that only holds body data (weigh-in, measurements) from before the
+ * first day doesn't start the history early.
+ */
 export function historyCell(date: string, day: Day | undefined, firstDate: string | undefined): HistoryCell {
-  if (!day || day.deleted) {
+  if (!day || day.deleted || (day.quests.length === 0 && (!firstDate || date < firstDate))) {
     const status = !firstDate || date < firstDate ? 'before-start' : 'missed'
     return { date, status, done: 0, total: 0, xp: 0 }
   }
@@ -77,8 +89,8 @@ export function buildHistory(
   days: readonly Day[],
   today: string,
   count = 30,
-  /** The user's first-ever day; defaults to the earliest of `days`. */
-  firstDate: string | undefined = days.reduce<string | undefined>((min, d) => (!min || d.date < min ? d.date : min), undefined),
+  /** The user's first-ever day; defaults to the earliest quest day of `days`. */
+  firstDate: string | undefined = firstQuestDate(days),
 ): HistoryCell[] {
   const byDate = new Map(days.map((d) => [d.date, d]))
   const cells: HistoryCell[] = []
