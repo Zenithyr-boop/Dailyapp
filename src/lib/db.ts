@@ -350,15 +350,19 @@ export interface ProgressPhoto {
   /** Local day the photo is for, `YYYY-MM-DD`. */
   date: string
   pose?: PhotoPose
-  /** JPEG, longest side at most `PHOTO_MAX_SIDE` px (`features/body/photos/image.ts`). */
-  image: ArrayBuffer
-  /** Small JPEG for grids. */
+  /** Small JPEG for grids. The full image is in `photoImages` (same id), so lists stay light. */
   thumb: ArrayBuffer
   type: string
   width: number
   height: number
   /** When it was added (ms). */
   addedAt: number
+}
+
+/** The full image of a progress photo: JPEG, longest side at most `PHOTO_MAX_SIDE` px (`features/body/photos/image.ts`). */
+export interface PhotoImage {
+  id: string
+  image: ArrayBuffer
 }
 
 /** Device-only key/value data (sync cursors, pending celebration). Never synced. */
@@ -381,6 +385,7 @@ export type FromZeroDB = Dexie & {
   savedMeals: EntityTable<SavedMeal, 'id'>
   offProducts: EntityTable<OffProduct, 'barcode'>
   photos: EntityTable<ProgressPhoto, 'id'>
+  photoImages: EntityTable<PhotoImage, 'id'>
   meta: EntityTable<MetaEntry, 'key'>
 }
 
@@ -468,6 +473,7 @@ db.version(7).stores({
 // v8: progress photos. Device-only (not in SYNCED_TABLES): never uploaded.
 db.version(8).stores({
   photos: 'id, date, addedAt',
+  photoImages: 'id',
 })
 
 /** Tables that sync to Firestore. */

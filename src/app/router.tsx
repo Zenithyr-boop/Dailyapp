@@ -22,6 +22,9 @@ import { GoalsPage } from '../features/profile/goals/GoalsPage'
 import { OnboardingGate } from '../features/onboarding/OnboardingGate'
 import { OnboardingPage } from '../features/onboarding/OnboardingPage'
 import { BodyPage } from '../features/body/BodyPage'
+import { MeasurementsPage } from '../features/body/MeasurementsPage'
+import { PhotosPage } from '../features/body/photos/PhotosPage'
+import { ComparePage } from '../features/body/photos/ComparePage'
 import { ProgramsPage } from '../features/programs/ProgramsPage'
 import { CommunityPage } from '../features/community/CommunityPage'
 
@@ -60,6 +63,9 @@ export const router = createBrowserRouter([
       { path: 'me', element: <ProfilePage /> },
       { path: 'me/goals', element: <GoalsPage /> },
       { path: 'body', element: <BodyPage /> },
+      { path: 'body/measurements', element: <MeasurementsPage /> },
+      { path: 'body/photos', element: <PhotosPage /> },
+      { path: 'body/photos/compare', element: <ComparePage /> },
       { path: 'programs', element: <ProgramsPage /> },
       { path: 'community', element: <CommunityPage /> },
       { path: '*', element: <NotFoundPage /> },
