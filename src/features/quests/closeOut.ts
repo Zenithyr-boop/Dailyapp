@@ -34,7 +34,8 @@ export async function closeOutDays(today?: string): Promise<string[]> {
       .where('date')
       .below(key)
       .reverse()
-      .filter((d) => !d.deleted)
+      // Body-only records (weigh-ins logged for days before the user started) don't count.
+      .filter((d) => !d.deleted && d.quests.length > 0)
       .first()
     if (!last) return [] // a new user: nothing before today to close
 

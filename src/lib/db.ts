@@ -46,6 +46,8 @@ export interface Profile extends SyncFields {
   mealNames?: Partial<Record<MealSlot, string>>
   /** Hour the day starts (0–4; unset = midnight). Before it, time counts toward the previous day. See `lib/day.ts`. */
   dayStartHour?: number
+  /** The user's goal weight (kg), set on the Body screen. */
+  goalWeightKg?: number
   /** Highest rank earned. Never drops; devices merge it with max. */
   rank: Rank
   /** Highest level already celebrated, so a level-up shows only once. Merged with max. */
@@ -95,13 +97,27 @@ export interface Quest extends QuestFields {
   at?: number
 }
 
+/** Body measurements, all in cm, each optional. */
+export type MeasureKey = 'waistCm' | 'chestCm' | 'hipsCm' | 'armCm' | 'thighCm'
+export type Measurements = Partial<Record<MeasureKey, number>>
+/** The body values a day can hold (weigh-in + measurements). */
+export type BodyField = 'weightKg' | MeasureKey
+
 export interface Day extends SyncFields {
   /** `YYYY-MM-DD`, local time. */
   date: string
+  /** Empty on a day that only holds body data from before the user's first quest day. */
   quests: Quest[]
   steps?: number
   sleepMinutes?: number
+  /** Weigh-in for the day (kg). */
   weightKg?: number
+  measurements?: Measurements
+  /**
+   * When each body value last changed (ms), whether it was set or cleared, so
+   * sync merges them value by value and a removed weigh-in stays removed.
+   */
+  bodyAt?: Partial<Record<BodyField, number>>
   waterMl?: number
 }
 
@@ -321,6 +337,30 @@ export interface CustomMovement extends SyncFields {
   instructions: string[]
 }
 
+/** Pose of a progress photo (optional), so compare can match like with like. */
+export type PhotoPose = 'front' | 'side' | 'back'
+
+/**
+ * A progress photo. Device-only: stored in IndexedDB, never uploaded or synced.
+ * Images are kept as bytes (ArrayBuffer) rather than Blobs, which older Safari
+ * versions couldn't store in IndexedDB.
+ */
+export interface ProgressPhoto {
+  id: string
+  /** Local day the photo is for, `YYYY-MM-DD`. */
+  date: string
+  pose?: PhotoPose
+  /** JPEG, longest side at most `PHOTO_MAX_SIDE` px (`features/body/photos/image.ts`). */
+  image: ArrayBuffer
+  /** Small JPEG for grids. */
+  thumb: ArrayBuffer
+  type: string
+  width: number
+  height: number
+  /** When it was added (ms). */
+  addedAt: number
+}
+
 /** Device-only key/value data (sync cursors, pending celebration). Never synced. */
 export interface MetaEntry {
   key: string
@@ -340,6 +380,7 @@ export type FromZeroDB = Dexie & {
   favorites: EntityTable<FavoriteFood, 'id'>
   savedMeals: EntityTable<SavedMeal, 'id'>
   offProducts: EntityTable<OffProduct, 'barcode'>
+  photos: EntityTable<ProgressPhoto, 'id'>
   meta: EntityTable<MetaEntry, 'key'>
 }
 
@@ -422,6 +463,11 @@ db.version(7).stores({
   favorites: 'id, dirty',
   savedMeals: 'id, dirty',
   offProducts: 'barcode, fetchedAt',
+})
+
+// v8: progress photos. Device-only (not in SYNCED_TABLES): never uploaded.
+db.version(8).stores({
+  photos: 'id, date, addedAt',
 })
 
 /** Tables that sync to Firestore. */

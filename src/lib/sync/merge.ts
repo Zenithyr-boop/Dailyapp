@@ -15,7 +15,7 @@
  * - Nothing is thrown away silently: a quest that exists in only one copy of a
  *   day is kept if it has any progress.
  */
-import type { Day, Profile, Quest, QuestDef, SyncedTable, SyncFields } from '../db'
+import type { BodyField, Day, MeasureKey, Profile, Quest, QuestDef, SyncedTable, SyncFields } from '../db'
 import { rankIndex } from '../rank'
 
 type AnyRecord = SyncFields
@@ -82,6 +82,39 @@ function mergeQuest(newer: Quest, older: Quest, concurrent: boolean): Quest {
   return { ...newer, value: progressFrom.value, done: progressFrom.done, at: progressFrom.at }
 }
 
+const MEASURE_KEYS: readonly MeasureKey[] = ['waistCm', 'chestCm', 'hipsCm', 'armCm', 'thighCm']
+
+function bodyValue(day: Day, field: BodyField): number | undefined {
+  return field === 'weightKg' ? day.weightKg : day.measurements?.[field]
+}
+
+/**
+ * Body values (weigh-in, measurements) merge one by one: each comes from the
+ * copy that changed it last (`bodyAt`), so a removed value stays removed and
+ * a weigh-in on one phone doesn't undo a waist measurement on the other.
+ * Values from before `bodyAt` existed fall back to newer-else-older.
+ */
+function mergeBody(newer: Day, older: Day): Pick<Day, 'weightKg' | 'measurements' | 'bodyAt'> {
+  const bodyAt: Partial<Record<BodyField, number>> = {}
+  const values: Partial<Record<BodyField, number>> = {}
+  for (const field of ['weightKg', ...MEASURE_KEYS] as const) {
+    const atNewer = newer.bodyAt?.[field] ?? 0
+    const atOlder = older.bodyAt?.[field] ?? 0
+    const value =
+      atNewer || atOlder
+        ? bodyValue(atOlder > atNewer ? older : newer, field)
+        : (bodyValue(newer, field) ?? bodyValue(older, field))
+    if (value !== undefined) values[field] = value
+    if (atNewer || atOlder) bodyAt[field] = Math.max(atNewer, atOlder)
+  }
+  const { weightKg, ...measurements } = values
+  return {
+    weightKg,
+    measurements: Object.keys(measurements).length ? measurements : undefined,
+    bodyAt: Object.keys(bodyAt).length ? bodyAt : undefined,
+  }
+}
+
 /**
  * Merge two copies of the same day.
  * `concurrent` = the local copy has changes the cloud hasn't seen yet.
@@ -92,24 +125,31 @@ export function mergeDay(local: Day, remote: Day, concurrent: boolean): Day {
 
   const olderById = new Map(older.quests.map((q) => [q.id, q]))
   const newerIds = new Set(newer.quests.map((q) => q.id))
-  const quests: Quest[] = newer.quests.map((q) => {
-    const other = olderById.get(q.id)
-    return other ? mergeQuest(q, other, concurrent) : q
-  })
+  // A copy with no quests only holds body data (made before that device's first
+  // quest day): the other copy's quest list stands.
+  const quests: Quest[] =
+    newer.quests.length === 0
+      ? older.quests
+      : newer.quests.map((q) => {
+          const other = olderById.get(q.id)
+          return other ? mergeQuest(q, other, concurrent) : q
+        })
   // Quests only the older copy has: keep them if they hold progress (never lose a tick).
-  for (const q of older.quests) {
-    if (!newerIds.has(q.id) && hasProgress(q)) quests.push(q)
+  if (newer.quests.length > 0) {
+    for (const q of older.quests) {
+      if (!newerIds.has(q.id) && hasProgress(q)) quests.push(q)
+    }
   }
 
-  const pick = <K extends 'steps' | 'sleepMinutes' | 'weightKg' | 'waterMl'>(k: K) => newer[k] ?? older[k]
+  const pick = <K extends 'steps' | 'sleepMinutes' | 'waterMl'>(k: K) => newer[k] ?? older[k]
   const merged: Day = {
     ...older,
     ...newer,
     quests,
     steps: pick('steps'),
     sleepMinutes: pick('sleepMinutes'),
-    weightKg: pick('weightKg'),
     waterMl: pick('waterMl'),
+    ...mergeBody(newer, older),
     updatedAt: Math.max(local.updatedAt, remote.updatedAt),
   }
   return toCloud(merged)
@@ -236,6 +276,7 @@ export function isPristine(
       p.units !== 'metric' ||
       p.heightUnits !== undefined ||
       p.dayStartHour !== undefined ||
+      p.goalWeightKg !== undefined ||
       p.body !== undefined ||
       p.plan !== undefined ||
       Object.keys(p.goals ?? {}).length > 0)
@@ -254,6 +295,7 @@ export function isPristine(
       d.steps === undefined &&
       d.sleepMinutes === undefined &&
       d.weightKg === undefined &&
+      d.measurements === undefined &&
       d.waterMl === undefined,
   )
 }

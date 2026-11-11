@@ -239,3 +239,43 @@ describe('no-op merges', () => {
     expect(resolveIncoming('days', { ...d, dirty: 1 }, d).upload).toBe(false)
   })
 })
+
+describe('mergeDay body values', () => {
+  it('takes each body value from the copy that changed it last', () => {
+    const local = day(10, [], { weightKg: 80, measurements: { waistCm: 85 }, bodyAt: { weightKg: 10, waistCm: 3 } })
+    const remote = day(5, [], { weightKg: 81, measurements: { waistCm: 84, armCm: 36 }, bodyAt: { weightKg: 5, waistCm: 5, armCm: 5 } })
+    const merged = mergeDay(local, remote, true)
+    expect(merged.weightKg).toBe(80)
+    expect(merged.measurements).toEqual({ waistCm: 84, armCm: 36 })
+    expect(merged.bodyAt).toEqual({ weightKg: 10, waistCm: 5, armCm: 5 })
+  })
+
+  it('lets a removed weigh-in stay removed', () => {
+    const removed = day(20, [], { bodyAt: { weightKg: 20 } })
+    const stale = day(30, [], { weightKg: 80, bodyAt: { weightKg: 10 } }) // newer record, older weigh-in
+    expect(mergeDay(removed, stale, false).weightKg).toBeUndefined()
+    expect(mergeDay(stale, removed, false).weightKg).toBeUndefined()
+  })
+
+  it('beats an old weigh-in that has no change time', () => {
+    const legacy = day(50, [], { weightKg: 90 })
+    const cleared = day(20, [], { bodyAt: { weightKg: 20 } })
+    expect(mergeDay(legacy, cleared, false).weightKg).toBeUndefined()
+    // Without change times on either side: newer, else older.
+    expect(mergeDay(day(50, []), day(20, [], { weightKg: 90 }), false).weightKg).toBe(90)
+  })
+
+  it('keeps the quest list when the newer copy only holds body data', () => {
+    const quests = [check('a', false), check('b', true, 3)]
+    const merged = mergeDay(day(10, [], { weightKg: 80, bodyAt: { weightKg: 10 } }), day(5, quests), false)
+    expect(merged.quests).toEqual(quests)
+    expect(merged.weightKg).toBe(80)
+  })
+
+  it('a device with measurements is not pristine', () => {
+    expect(
+      isPristine({ profile: profile({}), quests: [], days: [day(1, [], { measurements: { waistCm: 80 } })], otherRecords: 0 }, []),
+    ).toBe(false)
+    expect(isPristine({ profile: profile({ goalWeightKg: 70 }), quests: [], days: [], otherRecords: 0 }, [])).toBe(false)
+  })
+})
