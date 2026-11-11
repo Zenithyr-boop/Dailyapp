@@ -4,7 +4,7 @@
  * (50,000 reads and 20,000 writes per day for the whole project).
  * Stored in localStorage: a per-device convenience, not user data.
  */
-import { toDayKey } from '../dates'
+import { dayKeyAt } from '../day'
 
 const KEY = 'fromzero-sync-usage'
 
@@ -21,14 +21,14 @@ function load(): Usage {
   } catch {
     // Storage blocked or corrupt: start from zero.
   }
-  return { date: toDayKey(), reads: 0, writes: 0 }
+  return { date: dayKeyAt(), reads: 0, writes: 0 }
 }
 
 let cache: Usage = load()
 
 /** Today's counts. Returns the same object until something changes (safe for useSyncExternalStore). */
 export function getUsage(): Usage {
-  const today = toDayKey()
+  const today = dayKeyAt()
   if (cache.date !== today) cache = { date: today, reads: 0, writes: 0 }
   return cache
 }

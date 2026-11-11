@@ -3,6 +3,7 @@ import { AppLayout } from './AppLayout'
 import { NotFoundPage } from './NotFoundPage'
 import { QuestsPage } from '../features/quests/QuestsPage'
 import { EditQuestsPage } from '../features/quests/EditQuestsPage'
+import { HistoryPage } from '../features/quests/HistoryPage'
 import { TrainPage } from '../features/train/TrainPage'
 import { MovementLibraryPage } from '../features/train/library/MovementLibraryPage'
 import { MovementDetailPage } from '../features/train/library/MovementDetailPage'
@@ -38,6 +39,7 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="/quests" replace /> },
       { path: 'quests', element: <QuestsPage /> },
       { path: 'quests/edit', element: <EditQuestsPage /> },
+      { path: 'quests/history', element: <HistoryPage /> },
       { path: 'train', element: <TrainPage /> },
       { path: 'train/movements', element: <MovementLibraryPage /> },
       { path: 'train/movements/new', element: <MovementFormPage /> },

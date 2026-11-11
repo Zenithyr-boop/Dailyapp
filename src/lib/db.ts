@@ -44,6 +44,8 @@ export interface Profile extends SyncFields {
   plan?: GoalPlan
   /** The user's names for the four meals (unset = Breakfast, Lunch, Dinner, Snacks). */
   mealNames?: Partial<Record<MealSlot, string>>
+  /** Hour the day starts (0–4; unset = midnight). Before it, time counts toward the previous day. See `lib/day.ts`. */
+  dayStartHour?: number
   /** Highest rank earned. Never drops; devices merge it with max. */
   rank: Rank
   /** Highest level already celebrated, so a level-up shows only once. Merged with max. */

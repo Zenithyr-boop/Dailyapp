@@ -5,7 +5,7 @@
  * Deleting leaves a tombstone so the deletion reaches other devices.
  */
 import { db, type LoggedSet, type Session, type SessionExercise, type WorkoutItem, type WorkoutTemplate } from '../../../lib/db'
-import { toDayKey } from '../../../lib/dates'
+import { canEditQuests, dayKeyAt, getDayStartHour, getToday } from '../../../lib/day'
 import { ensureDay, ensureSetup, setQuestDone } from '../../quests/questsRepo'
 import type { TrackingType } from '../library/types'
 import { targetKind } from '../workouts/targets'
@@ -93,13 +93,21 @@ export class SessionInProgressError extends Error {
   }
 }
 
-/** Start a session from a workout, or an empty one. Returns its id. */
-export async function startSession(template: WorkoutTemplate | undefined, trackingOf: TrackingOf, now = Date.now()): Promise<string> {
+/**
+ * Start a session from a workout, or an empty one. Returns its id.
+ * `date` = the day it counts toward (a past day when logging an earlier workout; default today).
+ */
+export async function startSession(
+  template: WorkoutTemplate | undefined,
+  trackingOf: TrackingOf,
+  now = Date.now(),
+  date?: string,
+): Promise<string> {
   if (await getActiveSession()) throw new SessionInProgressError()
   const history = await listSessions()
   const session: Session = {
     id: crypto.randomUUID(),
-    date: toDayKey(new Date(now)),
+    date: date ?? dayKeyAt(now, await getDayStartHour()),
     name: template?.name || 'Workout',
     startedAt: now,
     exercises: (template?.items ?? []).map((item) => newExercise(item.movementId, trackingOf(item.movementId), history, item)),
@@ -186,17 +194,21 @@ export function applyWeight(s: Session, exKey: string, kg: number): Session {
 
 // ---- Finishing ---------------------------------------------------------------------------
 
-export type TrainQuestResult = 'checked' | 'already' | 'missing'
+/** `locked` = the session's day is older than yesterday, so its quests can't change any more. */
+export type TrainQuestResult = 'checked' | 'already' | 'missing' | 'locked'
 
-/** Tick today's "Train" quest (which awards its XP). */
-export async function tickTrainQuest(today = toDayKey()): Promise<TrainQuestResult> {
+/** Tick the "Train" quest of `date` (default today), which awards its XP. Only today and yesterday. */
+export async function tickTrainQuest(date?: string): Promise<TrainQuestResult> {
+  const today = await getToday()
+  const key = date ?? today
+  if (!canEditQuests(key, today)) return 'locked'
   await ensureSetup()
-  await ensureDay(today)
-  const day = await db.days.get(today)
+  await ensureDay(key)
+  const day = await db.days.get(key)
   const quest = day?.quests.find((q) => q.kind === 'check' && q.title.trim().toLowerCase() === 'train')
   if (!quest) return 'missing'
   if (quest.done) return 'already'
-  await setQuestDone(today, quest.id, true)
+  await setQuestDone(key, quest.id, true)
   return 'checked'
 }
 
@@ -206,9 +218,11 @@ export function hasDoneSets(s: Session): boolean {
 
 /**
  * Finish a session: keep only the sets that were done (and the movements that
- * have any), stamp the finish time, tick the Train quest.
+ * have any), stamp the finish time, tick the Train quest of the session's day
+ * (the day it started, or the past day it was logged for).
  */
 export async function finishSession(id: string, now = Date.now()): Promise<TrainQuestResult> {
+  const date = (await getSession(id))?.date
   await updateSession(id, (s) => ({
     ...s,
     finishedAt: now,
@@ -216,7 +230,7 @@ export async function finishSession(id: string, now = Date.now()): Promise<Train
       .map((e) => ({ ...e, sets: e.sets.filter((x) => x.done) }))
       .filter((e) => e.sets.length > 0),
   }))
-  return tickTrainQuest(toDayKey(new Date(now)))
+  return tickTrainQuest(date ?? (await getToday(now)))
 }
 
 /** Discard (in progress) or delete (finished). */

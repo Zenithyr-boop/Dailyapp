@@ -22,22 +22,23 @@ export async function loadTrackingLookup(): Promise<TrackingOf> {
  */
 export function useStartSession() {
   const navigate = useNavigate()
-  const [conflict, setConflict] = useState<{ active: Session; template?: WorkoutTemplate } | null>(null)
+  const [conflict, setConflict] = useState<{ active: Session; template?: WorkoutTemplate; date?: string } | null>(null)
   const [busy, setBusy] = useState(false)
 
-  async function begin(template?: WorkoutTemplate) {
-    await startSession(template, await loadTrackingLookup())
+  async function begin(template?: WorkoutTemplate, date?: string) {
+    await startSession(template, await loadTrackingLookup(), Date.now(), date)
     await skipRest()
     navigate('/train/session')
   }
 
-  async function start(template?: WorkoutTemplate) {
+  /** `date` logs the workout for an earlier day (default today). */
+  async function start(template?: WorkoutTemplate, date?: string) {
     if (busy) return
     setBusy(true)
     try {
       const active = await getActiveSession()
-      if (active) setConflict({ active, template })
-      else await begin(template)
+      if (active) setConflict({ active, template, date })
+      else await begin(template, date)
     } finally {
       setBusy(false)
     }
@@ -55,9 +56,9 @@ export function useStartSession() {
           variant="secondary"
           onClick={async () => {
             await deleteSession(conflict.active.id)
-            const template = conflict.template
+            const { template, date } = conflict
             setConflict(null)
-            await begin(template)
+            await begin(template, date)
           }}
         >
           Discard and start

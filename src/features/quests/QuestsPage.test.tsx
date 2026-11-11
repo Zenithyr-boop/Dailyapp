@@ -3,8 +3,8 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { db } from '../../lib/db'
 import { QuestsPage } from './QuestsPage'
 
-function renderPage() {
-  const router = createMemoryRouter([{ path: '/quests', element: <QuestsPage /> }], { initialEntries: ['/quests'] })
+function renderPage(url = '/quests') {
+  const router = createMemoryRouter([{ path: '/quests', element: <QuestsPage /> }], { initialEntries: [url] })
   render(<RouterProvider router={router} />)
 }
 
@@ -48,5 +48,64 @@ describe('QuestsPage', () => {
     expect(within(dialog).getByRole('heading', { name: 'Level 2' })).toBeInTheDocument()
     fireEvent.click(within(dialog).getByRole('button', { name: 'Continue' }))
     await vi.waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  describe('days', () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(new Date('2026-11-10T14:18:00'))
+    })
+    afterEach(() => vi.useRealTimers())
+
+    const oldDay = (date: string) =>
+      db.days.put({ date, quests: [{ id: 'q1', title: 'Read', xp: 30, kind: 'check', done: true }], updatedAt: 0 })
+
+    it('shows the countdown to the reset', async () => {
+      renderPage()
+      expect(await screen.findByText('resets in 9h 42m')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Next day' })).toBeDisabled()
+    })
+
+    it('keeps yesterday open (grace day)', async () => {
+      await oldDay('2026-11-09')
+      renderPage('/quests?date=2026-11-09')
+      const box = await screen.findByRole('checkbox', { name: /Read/ })
+      expect(box).toBeEnabled()
+      expect(screen.getByText('open for 9h 42m')).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Edit quests' })).not.toBeInTheDocument()
+    })
+
+    it('locks older days', async () => {
+      await oldDay('2026-11-08')
+      renderPage('/quests?date=2026-11-08')
+      const box = await screen.findByRole('checkbox', { name: /Read/ })
+      expect(box).toBeDisabled()
+      expect(box).toBeChecked()
+      expect(screen.getByText(/This day is closed/)).toBeInTheDocument()
+    })
+
+    it('never shows a future day', async () => {
+      renderPage('/quests?date=2026-11-11')
+      expect(await screen.findByRole('button', { name: 'Showing today' })).toBeInTheDocument()
+    })
+
+    it('moves back a day with the switcher', async () => {
+      await oldDay('2026-11-09')
+      renderPage()
+      fireEvent.click(await screen.findByRole('button', { name: 'Previous day' }))
+      expect(await screen.findByRole('button', { name: /Showing Yesterday/ })).toBeInTheDocument()
+      expect(await screen.findByRole('checkbox', { name: /Read/ })).toBeChecked()
+    })
+
+    it('picks a day from the calendar', async () => {
+      await oldDay('2026-11-03')
+      renderPage()
+      fireEvent.click(await screen.findByRole('button', { name: 'Pick a day' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Pick a day' })
+      expect(within(dialog).getByRole('button', { name: /November 11/ })).toBeDisabled()
+      fireEvent.click(within(dialog).getByRole('button', { name: /November 3.*1 of 1 quests done/ }))
+      await vi.waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(await screen.findByRole('checkbox', { name: /Read/ })).toBeDisabled()
+    })
   })
 })

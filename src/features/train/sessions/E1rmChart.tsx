@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
-import { fromDayKey } from '../../../lib/dates'
+import { fromDayKey } from '../../../lib/day'
 import type { UnitSystem } from '../../../lib/units'
 import { displayWeight, formatNumber, unitLabel } from './weights'
 

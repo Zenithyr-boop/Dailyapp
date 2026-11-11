@@ -11,7 +11,7 @@
  *   Level 35 ≈ 221 (7 months), Level 50 ≈ 580 (19 months).
  */
 
-import { addDays } from './dates'
+import { addDays } from './day'
 
 export const BASE_XP = 850
 export const GROWTH = 1.06

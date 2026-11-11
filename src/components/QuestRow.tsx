@@ -7,19 +7,22 @@ interface QuestRowProps {
   /** Small grey line under the title. */
   sub?: string
   onToggle: (done: boolean) => void
+  /** Read-only (a past day outside the grace period). */
+  locked?: boolean
 }
 
 /** One checkbox quest: square checkbox, title, XP value. Whole row is the hit area. */
-export function QuestRow({ title, xp, done, sub, onToggle }: QuestRowProps) {
+export function QuestRow({ title, xp, done, sub, onToggle, locked = false }: QuestRowProps) {
   const id = useId()
   return (
-    <label htmlFor={id} className="flex min-h-[58px] cursor-pointer items-center gap-3.5 py-2">
+    <label htmlFor={id} className={`flex min-h-[58px] items-center gap-3.5 py-2 ${locked ? '' : 'cursor-pointer'}`}>
       <input
         id={id}
         type="checkbox"
         checked={done}
+        disabled={locked}
         onChange={(e) => onToggle(e.target.checked)}
-        className="peer grid size-[26px] shrink-0 cursor-pointer appearance-none place-content-center border-2 border-faint checked:border-accent checked:bg-accent"
+        className="peer grid size-[26px] shrink-0 cursor-pointer appearance-none disabled:cursor-default place-content-center border-2 border-faint checked:border-accent checked:bg-accent"
       />
       {/* Check mark drawn over the box when checked. */}
       <svg

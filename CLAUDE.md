@@ -52,7 +52,7 @@ src/
   app/          routes, layout, tab bar / side nav
   features/     one folder per feature: today, quests, train, food, body, programs, squad, community, profile
   components/   shared UI (Panel, QuestRow, XpBar, RankBadge, StatBlock, Button, TabBar)
-  lib/          db (Dexie), firebase, health (Capacitor bridge), xp/levels math, dates, units
+  lib/          db (Dexie), firebase, health (Capacitor bridge), xp/levels math, day (the one source of "today"), units
   styles/       theme.css (tokens), global.css
 ```
 
@@ -88,7 +88,8 @@ Rules:
   (B-Web, B-Today, B-Squad). Match them.
 
 ## Progression rules
-- Daily quests = the user's habits for the day; each has an XP value. Reset at local midnight.
+- Daily quests = the user's habits for the day; each has an XP value. Reset when the user's day
+  starts (midnight by default, up to 4 AM; see "Days").
   Two types: checkbox, and number target (e.g. 3 L water, with a + step).
 - Quest XP: pick a difficulty (Easy 20 / Medium 40 / Hard 60 / Very hard 90 / Extreme 120),
   then fine-tune between 10 and 150. No unlimited values (keeps pacing and squads fair).
@@ -105,7 +106,7 @@ Rules:
 - `users/{uid}` profile: display name, units (metric/imperial) and `heightUnits` (cm/ftin, unset = follows units),
   `onboarding` (done/skipped), `body` (sex, birth year, height cm, weight kg, activity), `plan` (lose/gain + kg per
   week; unset = maintain), `goals` (kcal, protein/fat/carbs g, `macroMode` auto/custom, steps, sleep, water ml),
-  `mealNames` (the user's names for breakfast/lunch/dinner/snacks), earned rank and best level (both only go up).
+  `mealNames` (the user's names for breakfast/lunch/dinner/snacks), `dayStartHour` (0–4, unset = midnight), earned rank and best level (both only go up).
   XP, level and streak are never stored: they're derived from the days (`progressFromDays` in `lib/xp.ts`).
 - `users/{uid}/quests/{id}` the user's quest list (title, xp, type, target/unit/step, order)
 - `users/{uid}/days/{YYYY-MM-DD}` a copy of that day's quests + progress, steps, sleep, weight, water
@@ -151,8 +152,30 @@ squad data readable by members only; community posts readable by all signed-in u
   once edited or deleted, so new devices stay "untouched" on first sign-in and devices never duplicate them.
   Never change a starter id.
 
+## Days (`src/lib/day.ts`)
+- The one source of "today". Day keys are `YYYY-MM-DD` in local time; the day starts at the profile's `dayStartHour`
+  (Me → Day starts at: midnight–4 AM), so 00:30 with a 4 AM start still belongs to the previous day. Keys are worked out
+  from the local date + hour, never by adding milliseconds (DST-safe). Never write another "today" helper.
+- Data code: `await getToday()` (reads the profile). Screens: `useToday()` / `useDayClock()` (today, start hour, ms left).
+- `dayClock` (started in `main.tsx` via `app/dayRollover.ts`) re-reads the real clock on open, `visibilitychange`, `focus`,
+  `pageshow` and at every minute boundary, rescheduling after every check, so paused (sleep) or early timers can't leave
+  the app on yesterday. The day-start hour is cached in localStorage so the first check after opening is right.
+- Closing out (`features/quests/closeOut.ts`, on open, on every day change and after sync pulls days): days since the last
+  record get an all-unchecked record (misses on record, streak breaks; capped at 90 days), then today's record.
+  XP, the +80 bonus, level and streak stay derived (`progressFromDays`). Gap records hold no progress, so `mergeDay`
+  never lets them remove another device's ticks.
+- Grace: quests can be changed today and yesterday only (`canEditQuests`, enforced in `questsRepo` with
+  `DayLockedError`); older days are read-only; no future days anywhere. Food and workouts can be added on any past day;
+  a past-day workout ticks that day's Train quest only inside the grace window (`TrainQuestResult` `locked`).
+- Shared `components/DateSwitcher` ("‹ Today ›" + month picker, `?date=` / `?pick=1` in the URL) on Quests, Food and
+  Train. `components/MonthCalendar` (weeks start Monday) also drives Day history (`/quests/history?month=&day=`): each
+  day marked full/partial/missed with "4/6"; a day's summary shows quests, XP, food vs targets, workouts, weight.
+- Tests use vitest fake timers (`lib/day.test.ts` pins TZ to America/New_York with `vi.stubEnv`; `closeOut.test.ts`
+  fakes only Date because fake-indexeddb needs real timers).
+
 ## Sessions / live logging (`src/features/train/sessions`)
 - One session in progress at a time (`/train/session`); a "Resume session" banner shows on Quests and Train.
+  A session's `date` is the day it started (or the past day picked on Train → "Log a workout for …").
   Every edit is written to Dexie at once (`sessionsRepo.ts`), so a refresh never loses a set. Weight fields
   commit on blur/Enter; ticking a set saves it.
 - Weights are stored in kg. `weights.ts` shows them in the user's units (profile `units`, toggle on Me and in the
@@ -160,13 +183,13 @@ squad data readable by members only; community posts readable by all signed-in u
 - Rest timer (`restTimer.ts`): starts on tick with the movement's rest (inside a superset only after the last
   movement), end time in device-only meta, beep + vibrate at zero. Screen Wake Lock while a session is open
   (browser/PWA only; the APK will need a native keep-awake plugin).
-- Finishing keeps only ticked sets and ticks today's quest titled "Train" (its XP comes from the day as usual).
+- Finishing keeps only ticked sets and ticks the session day's quest titled "Train" (its XP comes from the day as usual).
 - `records.ts`: Epley e1RM, PRs vs earlier sessions (none on a movement's first log), "last time", totals.
 - `progression.ts` — tunable by the coach: next-time rule, +2.5 kg lower body / +1.25 kg upper body (by primary
   muscle), plate steps.
 
 ## Food logging (`src/features/food`)
-- Food tab (`/food`, `?date=` for other days): calories as a 10-block bar and protein/carbs/fat as flat bars against
+- Food tab (`/food`, `?date=` for earlier days, never future; shared date switcher): calories as a 10-block bar and protein/carbs/fat as flat bars against
   the saved goals, then four meals (names editable) with per-meal totals. A meal's ⋯ menu: copy the day before's
   meal, save as a meal, rename. "Copy yesterday" copies a whole day. Tapping an entry edits/moves/removes it (`?entry=`).
 - Add food (`/food/add?meal=&date=`): one search over everything on the device (bundled USDA foods, custom foods,

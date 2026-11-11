@@ -2,10 +2,11 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useId, useState } from 'react'
 import { Link } from 'react-router'
 import { Button } from '../../components/Button'
+import { DateSwitcher } from '../../components/DateSwitcher'
 import { Dialog } from '../../components/Dialog'
-import { ChevronLeftIcon, ChevronRightIcon, CopyIcon, MoreIcon, PlusIcon } from '../../components/icons'
+import { ChevronRightIcon, CopyIcon, MoreIcon, PlusIcon } from '../../components/icons'
 import { Panel } from '../../components/Panel'
-import { addDays } from '../../lib/dates'
+import { addDays } from '../../lib/day'
 import type { FoodEntry, MealSlot, Portion, Profile } from '../../lib/db'
 import { inputClass } from '../train/workouts/fields'
 import { useUnits } from '../profile/units'
@@ -21,7 +22,7 @@ import {
   sumTotals,
   type Food,
 } from './nutrition'
-import { dayLabel, longDayLabel, useDayEntries, useFoodParams, useProfile } from './ui/hooks'
+import { longDayLabel, useDayEntries, useFoodParams, useProfile } from './ui/hooks'
 import { PortionDialog } from './ui/PortionDialog'
 import { DayTotals, MacroLine } from './ui/TotalsBars'
 
@@ -40,14 +41,6 @@ export function FoodPage() {
   const setStatus = (text: string) => setMessage({ date, text })
   const [menu, setMenu] = useState<MealSlot>()
   const entryId = params.get('entry')
-
-  function goTo(next: string) {
-    const p = new URLSearchParams(params)
-    p.delete('entry')
-    if (next === today) p.delete('date')
-    else p.set('date', next)
-    setParams(p)
-  }
 
   function openEntry(id?: string) {
     const p = new URLSearchParams(params)
@@ -69,35 +62,7 @@ export function FoodPage() {
         <p className="label mb-1">{longDayLabel(date)}</p>
         <div className="flex items-end justify-between gap-3">
           <h1 className="text-4xl font-extrabold leading-none">Food</h1>
-          <nav aria-label="Day" className="flex items-center border border-line">
-            <button
-              type="button"
-              aria-label="Previous day"
-              title="Previous day"
-              onClick={() => goTo(addDays(date, -1))}
-              className="grid size-touch place-items-center text-muted hover:text-accent"
-            >
-              <ChevronLeftIcon size={20} />
-            </button>
-            <button
-              type="button"
-              onClick={() => goTo(today)}
-              disabled={date === today}
-              className="min-h-touch min-w-24 px-2 font-display text-sm font-bold uppercase tracking-wider disabled:cursor-default"
-              aria-label={date === today ? 'Showing today' : `Showing ${dayLabel(date, today)}. Go to today`}
-            >
-              {dayLabel(date, today)}
-            </button>
-            <button
-              type="button"
-              aria-label="Next day"
-              title="Next day"
-              onClick={() => goTo(addDays(date, 1))}
-              className="grid size-touch place-items-center text-muted hover:text-accent"
-            >
-              <ChevronRightIcon size={20} />
-            </button>
-          </nav>
+          <DateSwitcher date={date} today={today} clear={['entry']} />
         </div>
       </header>
 
