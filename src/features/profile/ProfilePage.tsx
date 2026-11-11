@@ -7,6 +7,7 @@ import { Panel } from '../../components/Panel'
 import { AccountPanel } from './AccountPanel'
 import { DATASET_URL } from '../train/library/dataset'
 import { GoalsPanel } from './goals/GoalsPanel'
+import { DayStartPanel } from './DayStartPanel'
 import { HeightUnitToggle, UnitToggle } from './UnitToggle'
 
 export function ProfilePage() {
@@ -28,6 +29,7 @@ export function ProfilePage() {
             </div>
           </div>
         </Panel>
+        <DayStartPanel />
         {/* On mobile these screens have no tab, so link them here. */}
         <Panel title="More" className="md:hidden">
           <ul className="-my-2">
