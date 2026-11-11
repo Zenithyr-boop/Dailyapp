@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- FromZero "FZ" mark (Midnight): flat, square, accent strokes on bg. Source for every icon. -->
+  <rect width="1024" height="1024" fill="#0B0E14"/>
+  <rect x="112" y="112" width="800" height="800" fill="#121722" stroke="#4DA3FF" stroke-width="24"/>
+  <g fill="none" stroke="#4DA3FF" stroke-width="64" stroke-linecap="square" stroke-linejoin="miter">
+    <path d="M300 692V332H468M300 508H436"/>
+    <path d="M556 332H724L556 692H724"/>
+  </g>
+</svg>

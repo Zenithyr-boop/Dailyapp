@@ -18,6 +18,8 @@ service-account*.json
 # Android signing keys — never commit
 *.keystore
 *.jks
+# signing passwords for release builds; the keystore itself lives outside the repo (CLAUDE.md → Android)
+android/keystore.properties
 
 # logs / OS / editor
 *.log

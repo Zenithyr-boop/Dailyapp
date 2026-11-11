@@ -10,6 +10,8 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Registered in main.tsx, and only on the website: the Android app has no service worker.
+      injectRegister: false,
       includeAssets: ['icon.svg'],
       manifest: {
         name: 'FromZero',
