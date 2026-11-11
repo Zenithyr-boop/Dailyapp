@@ -10,8 +10,8 @@
 
 export const POLICY_UPDATED = '11 November 2026'
 
-/** Where people can ask questions (public issues on the app's GitHub repository). */
-export const CONTACT_URL = 'https://github.com/Zenithyr-boop/Dailyapp/issues'
+/** Where people can ask questions about the app and their data. */
+export const CONTACT_EMAIL = 'fromzero1245@gmail.com'
 
 export interface PolicySection {
   heading: string
@@ -101,8 +101,8 @@ export const POLICY_SECTIONS: PolicySection[] = [
   {
     heading: 'Changes and contact',
     paragraphs: [
-      'If this policy changes, the new version is published here with a new date. Questions: open an issue on the ' +
-        'FromZero GitHub page.',
+      'If this policy changes, the new version is published here with a new date. Questions about your data or ' +
+        `this policy: email ${CONTACT_EMAIL}.`,
     ],
   },
 ]

@@ -1,7 +1,7 @@
 import { Link } from 'react-router'
 import { ChevronLeftIcon } from '../../components/icons'
 import { Panel } from '../../components/Panel'
-import { CONTACT_URL, POLICY_INTRO, POLICY_SECTIONS, POLICY_UPDATED } from './privacyPolicy'
+import { CONTACT_EMAIL, POLICY_INTRO, POLICY_SECTIONS, POLICY_UPDATED } from './privacyPolicy'
 
 /**
  * `/privacy`: full screen, outside the app shell and the onboarding gate, so anyone
@@ -42,8 +42,8 @@ export function PrivacyPage() {
       </div>
       <p className="mt-4 text-muted">
         Contact:{' '}
-        <a href={CONTACT_URL} target="_blank" rel="noreferrer" className="text-accent underline underline-offset-2 hover:text-text">
-          FromZero on GitHub
+        <a href={`mailto:${CONTACT_EMAIL}`} className="text-accent underline underline-offset-2 hover:text-text">
+          {CONTACT_EMAIL}
         </a>
       </p>
     </main>
