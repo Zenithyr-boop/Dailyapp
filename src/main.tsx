@@ -6,6 +6,7 @@ import { initDayRollover } from './app/dayRollover'
 import { initAccountSync } from './features/profile/accountSync'
 import { startAutoQuests } from './features/quests/autoQuests'
 import { startPrograms } from './features/programs/programsRepo'
+import { startHealthSync } from './features/today/healthSync'
 import { registerSW } from 'virtual:pwa-register'
 import { isNativeApp } from './lib/platform'
 import './styles/global.css'
@@ -20,6 +21,7 @@ initDayRollover()
 initAccountSync()
 startAutoQuests()
 startPrograms()
+startHealthSync()
 
 createRoot(root).render(
   <StrictMode>
