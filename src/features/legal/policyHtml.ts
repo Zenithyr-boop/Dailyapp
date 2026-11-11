@@ -4,7 +4,7 @@
  * rationale screen (a WebView with JavaScript off) shows it from the APK's assets,
  * and the website serves it at /privacypolicy.html.
  */
-import { CONTACT_URL, POLICY_INTRO, POLICY_SECTIONS, POLICY_UPDATED } from './privacyPolicy'
+import { CONTACT_URL, POLICY_INTRO, POLICY_SECTIONS, POLICY_UPDATED } from './privacyPolicy.ts'
 
 function escape(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')

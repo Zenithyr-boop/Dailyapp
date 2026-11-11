@@ -28,3 +28,10 @@ createRoot(root).render(
     <RouterProvider router={router} />
   </StrictMode>,
 )
+
+// Android app: drop the splash screen once the first screen is on show.
+if (isNativeApp()) {
+  requestAnimationFrame(() => {
+    void import('@capacitor/splash-screen').then(({ SplashScreen }) => SplashScreen.hide()).catch(() => {})
+  })
+}

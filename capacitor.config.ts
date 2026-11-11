@@ -15,7 +15,7 @@ const config: CapacitorConfig = {
   },
   plugins: {
     SplashScreen: {
-      // Hidden by the app once the first screen has rendered (main.tsx), with a fallback.
+      // main.tsx hides it as soon as the first screen has rendered; this is the fallback.
       launchAutoHide: true,
       launchShowDuration: 1500,
       backgroundColor: '#0B0E14',

@@ -32,8 +32,8 @@ It ships as:
   on every push to `main`, using the repo secret `FIREBASE_SERVICE_ACCOUNT`. Pull requests get
   preview channels. Nobody runs `firebase login` or `firebase deploy` by hand.
 - Firestore rules live in `firestore.rules`; I paste them into the console (Rules → Publish).
-- Google sign-in in the Android APK will need a native plugin (`@capacitor-firebase/authentication`);
-  popup sign-in only works on the website.
+- Google sign-in: a popup on the website; in the APK the native `@capacitor-firebase/authentication` account
+  picker (see "Android app").
 
 ## Commands
 - `npm run dev` — local dev server
@@ -44,8 +44,13 @@ It ships as:
   `fromzero-dev-emulator`). Use these to test sign-in; never create test accounts in the real project.
 - `npm run import:foods` — rebuild `features/food/library/foods.json` from `foodList.ts` (FDC API with
   `FDC_API_KEY` or DEMO_KEY; `-- --file <SR Legacy JSON>` reads the USDA download instead)
-- `npx cap sync android` — copy the web build into the Android project
-- `npx cap open android` — open in Android Studio to build the APK
+- `npm run android:sync` — build the website and copy it into `android/` (run before every APK build)
+- `npm run android:open` — open the Android project in Android Studio
+- `npm run icons` — redraw the FZ mark (`scripts/make-icons.ts` → `assets/`, `public/icon.svg`) and regenerate every
+  Android icon/splash size
+- APK builds (Claude runs these; needs Android Studio installed, it bundles Java): in `android/`, with
+  `JAVA_HOME="C:/Program Files/Android/Android Studio/jbr"`: `./gradlew assembleDebug`, `./gradlew assembleRelease`,
+  `./gradlew signingReport` (SHA-1 fingerprints)
 
 ## Folder layout
 ```
@@ -190,8 +195,8 @@ squad data readable by members only; community posts readable by all signed-in u
 - Weights are stored in kg. `weights.ts` shows them in the user's units (profile `units`, toggle on Me and in the
   logger), rounding converted values to `PLATE_STEP`; values typed in that unit come back exactly.
 - Rest timer (`restTimer.ts`): starts on tick with the movement's rest (inside a superset only after the last
-  movement), end time in device-only meta, beep + vibrate at zero. Screen Wake Lock while a session is open
-  (browser/PWA only; the APK will need a native keep-awake plugin).
+  movement), end time in device-only meta, beep + vibrate at zero. The screen stays on while a session is open:
+  Screen Wake Lock on the website, `@capacitor-community/keep-awake` in the APK (`useWakeLock`).
 - Finishing keeps only ticked sets; the session day's automatic Workout quest ticks itself (`TrainQuestResult` reports
   checked / already / missing / locked). Deleting the session unticks it again inside the grace window.
 - `records.ts`: Epley e1RM, PRs vs earlier sessions (none on a movement's first log), "last time", totals.
@@ -222,8 +227,8 @@ squad data readable by members only; community posts readable by all signed-in u
   Missing nutrients are listed and count as 0; kcal falls back to kJ ÷ 4.184 (flagged). "Fill in the gaps" makes a
   custom copy (`basedOn`), which wins on later scans/lookups and fixes that product's incomplete log entries.
 - Scanning (`scan/scanner.ts`): native BarcodeDetector where available, else `@zxing/browser` (lazy chunk);
-  UPC-E is expanded to UPC-A. Typing the number always works. The APK will need the `CAMERA` permission in
-  AndroidManifest.xml (no Android project yet).
+  UPC-E is expanded to UPC-A. Typing the number always works. The APK declares `CAMERA` (optional camera feature);
+  Capacitor asks for it when the scanner opens.
 - Credits for USDA and Open Food Facts (ODbL) are in About on the Me screen.
 
 ## Today: automatic quests, daily stats, dashboard (`src/features/quests`, `src/features/today`)
@@ -238,7 +243,8 @@ squad data readable by members only; community posts readable by all signed-in u
 - db v9 made existing "Train" quests automatic Workout quests. New users' Train, protein and steps quests are
   automatic; starter water, calories and weigh-in options too. Other existing quests change only if the user edits them.
 - Daily stats (`today/statsRepo.ts`): steps, sleep, water typed by hand for any day up to today (`?stat=steps|sleep|water`
-  dialogs); the APK will fill the same fields from Health Connect. `addWater` reads and writes in one transaction.
+  dialogs); the APK also fills steps/sleep (and weight) from Health Connect (see "Android app"). `addWater` reads and
+  writes in one transaction.
 - Quests screen: Today strip (steps, sleep, kcal, protein) above the quests on every size. Desktop (`lg`) is a wide
   two-column dashboard (route `handle: { wide: true }` widens the shell): rank/level/XP header, daily quests, then
   Volume this week (Mon–Sun flat bars vs last week, `week.ts`), today's food, weight trend (`DashboardPanels.tsx`).
@@ -313,6 +319,46 @@ squad data readable by members only; community posts readable by all signed-in u
   data; otherwise match starter quests by name+type, then merge. Never drop user data silently.
 - Firestore reads/writes are counted per day on the device (`lib/sync/usage.ts`, shown on Me).
 - Firestore has no local emulator here (needs Java); test sync with two browsers on a PR preview.
+
+## Android app (`android/`, `capacitor.config.ts`)
+- Capacitor 8 wraps the same web build: appId `app.fromzero`, name FromZero, minSdk 26 (Health Connect), target 36.
+  `src/lib/platform.ts` (`isNativeApp`/`isAndroidApp`) gates every native feature; each is a no-op on the website.
+  No service worker in the APK (`main.tsx` registers it only on the web). Status bar: dark (`SystemBars`), the page pads
+  itself with `env(safe-area-inset-*)`. Splash: FZ mark on bg, hidden by `main.tsx` after the first render.
+- Icon/splash: flat square "FZ" mark drawn in `scripts/make-icons.ts` (`npm run icons`). Never hand-edit generated PNGs.
+- Version: `versionName` = package.json `version`; `versionCode` is derived from it (1.2.3 → 10203) in
+  `android/app/build.gradle`, so bumping package.json bumps both. Every release needs a higher version.
+- Health Connect (`src/lib/health`: `bridge.ts` plugin calls, `days.ts` pure + tested): reads ONLY steps (hourly
+  aggregates, de-duplicated by Health Connect), sleep (asleep stages, on the wake-up day, overlaps once) and weight
+  (last of the day). The manifest strips every other health permission the plugin declares (`tools:node="remove"`).
+  `features/today/healthSync.ts` writes through `saveStats`/`saveBody` (so `statsAt`/`bodyAt` + sync work) on open and
+  on resume (`App` resume + `visibilitychange`); 30 days on connect, then from the day before the last sync. Device-only
+  meta `health` keeps what was imported per day: a hand-corrected value stays until Health Connect has a new number.
+  `startAutoQuests` picks the writes up (tested in `healthSync.test.ts`).
+- Explanation screen `/me/health` (steps + sleep on, weight opt-in) before the system sheet. Privacy policy: one text in
+  `features/legal/privacyPolicy.ts`, shown at `/privacy` and built into `privacypolicy.html` (script-free, for Health
+  Connect's rationale WebView, which runs no JS; also served by the website). Update it when data use changes.
+- Native Google sign-in: `@capacitor-firebase/authentication` with `skipNativeAuth`; its ID token signs in to the
+  Firebase web SDK (`lib/auth.ts`), also for re-auth; sign-out clears the native session. The APK's Auth uses
+  `initializeAuth` + IndexedDB persistence (no popup resolver). Needs `android/app/google-services.json`.
+  `firebase` 13 vs the plugin's peer range is bridged with an npm `overrides` entry (the plugin only passes a token).
+- `google-services.json` is NOT a secret (same public config as `.env`; Google sign-in is locked to the package name +
+  SHA-1 fingerprints), so it's committed. Re-download it after adding fingerprints.
+- Update check (`lib/updates.ts`, `app/UpdateBanner.tsx`): on launch the APK compares `App.getInfo().version` with the
+  latest GitHub Release of `Zenithyr-boop/Dailyapp` (public API, cached 6 h, "Later" skips that version); the banner's
+  Download opens the release's `.apk` in the phone's browser. The repo must stay public for this and for downloads.
+- Barcode camera: `CAMERA` permission. Keep-awake during sessions: `@capacitor-community/keep-awake`.
+- Signing: release keystore at `C:\Users\kevin\FromZero-keys\fromzero-release.jks` (outside the repo, backed up, password
+  in a password manager). `android/keystore.properties` (git-ignored) holds `storeFile`, `storePassword`, `keyAlias`,
+  `keyPassword`. Losing the keystore means users must uninstall to update: keep two copies.
+
+### Release steps (Claude runs them; the user approves publishing)
+1. Bump `version` in package.json (e.g. 0.2.0), commit on the release branch/PR, merge to main.
+2. `npm run android:sync`, then in `android/`: `./gradlew assembleRelease` → `android/app/build/outputs/apk/release/app-release.apk`.
+3. Rename to `FromZero-<version>.apk`, then `gh release create v<version> <apk> --title "FromZero <version>" --notes "…"`.
+   The tag must be `v` + package.json's version, or the update check won't match.
+Same in Android Studio: Build → Generate Signed App Bundle or APK… → APK → Next → choose the keystore → Next → release →
+Create; then on github.com: the repo → Releases → Draft a new release → tag `v<version>` → attach the APK → Publish release.
 
 ## How I work (important)
 - I use only the Claude desktop app's Code tab. I never type in a terminal.

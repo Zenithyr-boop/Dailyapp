@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { readFileSync } from 'node:fs'
-import { privacyPolicyHtml } from './src/features/legal/policyHtml'
+import { privacyPolicyHtml } from './src/features/legal/policyHtml.ts'
 
 /** package.json's version: shown in Me → About and compared with GitHub Releases (lib/updates.ts). */
 const APP_VERSION = (JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }).version
