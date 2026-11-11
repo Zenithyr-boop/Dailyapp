@@ -24,6 +24,7 @@ It ships as:
 - PWA: `vite-plugin-pwa` (offline support, installable)
 - Data: local-first. Everything works without an account (IndexedDB via Dexie).
   Signing in syncs to Firebase (Auth + Cloud Firestore), staying inside the free Spark plan.
+- Charts: uPlot (Body screens)
 - Android: Capacitor 8; health data via `@capgo/capacitor-health` (Health Connect)
 - Food data: bundled USDA FoodData Central whole foods + Open Food Facts API (packaged foods, barcodes);
   barcode scanning with BarcodeDetector, `@zxing/browser` as the fallback (see "Food logging")
@@ -100,17 +101,19 @@ Rules:
   B 20, A 35, S 50) plus, later, trials from other areas — goals reached, strength relative
   to body weight, progress toward the user's OWN body goal (never body weight itself).
   Untracked stats are skipped. Ranks are earned in order and never drop.
-  Only the level trial exists so far; Train/Body/Food add theirs.
+  Only the level trial exists so far; Train/Body/Food add theirs (Body can use `goalWeightKg` + the trend).
 
 ## Data model (Firestore, mirrors local Dexie tables)
 - `users/{uid}` profile: display name, units (metric/imperial) and `heightUnits` (cm/ftin, unset = follows units),
   `onboarding` (done/skipped), `body` (sex, birth year, height cm, weight kg, activity), `plan` (lose/gain + kg per
   week; unset = maintain), `goals` (kcal, protein/fat/carbs g, `macroMode` auto/custom, steps, sleep, water ml),
-  `mealNames` (the user's names for breakfast/lunch/dinner/snacks), `dayStartHour` (0–4, unset = midnight), earned rank and best level (both only go up).
+  `mealNames` (the user's names for breakfast/lunch/dinner/snacks), `dayStartHour` (0–4, unset = midnight), `goalWeightKg`, earned rank and best level (both only go up).
   XP, level and streak are never stored: they're derived from the days (`progressFromDays` in `lib/xp.ts`).
 - `users/{uid}/quests/{id}` the user's quest list (title, xp, type, target/unit/step, order)
-- `users/{uid}/days/{YYYY-MM-DD}` a copy of that day's quests + progress, steps, sleep, weight, water
+- `users/{uid}/days/{YYYY-MM-DD}` a copy of that day's quests + progress, steps, sleep, weigh-in (`weightKg`),
+  `measurements` (waist/chest/hips/arm/thigh cm), `bodyAt` (change time per body value), water
   (edits to quests apply to today; past days stay frozen)
+- Progress photos (`photos` + `photoImages`) are device-only, never uploaded or synced
 - `users/{uid}/workouts/{id}` workout templates (items: movement, sets, target by tracking type, RPE, rest, note, superset group); `users/{uid}/sessions/{id}` logged sessions (exercises with targets and sets: kg, reps,
   rpe, seconds, metres, done; no `finishedAt` = still in progress)
 - `users/{uid}/food/{id}` food log entries: date, meal slot, `loggedAt`, the food's name/brand/barcode/`foodId`,
@@ -215,6 +218,25 @@ squad data readable by members only; community posts readable by all signed-in u
   UPC-E is expanded to UPC-A. Typing the number always works. The APK will need the `CAMERA` permission in
   AndroidManifest.xml (no Android project yet).
 - Credits for USDA and Open Food Facts (ODbL) are in About on the Me screen.
+
+## Body (`src/features/body`)
+- `/body`: one-field daily weigh-in (Enter saves), weight chart (raw weigh-ins as dots, 7-day moving average as the
+  line, ranges 1M–All in `?range=`), trend weight, weekly rate, goal weight (`?goal=1`) and estimated date, weigh-in
+  list (`?weigh=<date>` edits/removes, `?weigh=new` logs any past day). Summaries link to measurements and photos.
+- `trend.ts` (unit-tested, numbers tunable at the top): moving average over 7 calendar days; weekly rate = least-squares
+  slope of the last 28 days (needs 4 weigh-ins over 7+ days); estimate only when heading toward the goal, max 2 years.
+- `bodyRepo.ts`: `saveBody(date, changes)` sets/clears values on the day record, stamping `bodyAt[field]`; any day up to
+  today. A missing day gets unchecked quests inside the quest history, or no quests before the first quest day.
+  Body-only records never start the history or back-fill misses (`firstQuestDate`, closeOut skips them).
+  The latest weigh-in updates profile `body.weightKg`; targets change only when Goals are saved.
+- Sync: `mergeDay` merges each body value by its `bodyAt` time, so a removed weigh-in stays removed.
+- `/body/measurements`: shared date switcher (`?date=`), five optional fields with how-to hints (`units.ts`, coach-editable),
+  chart + history per measurement (`?m=`). Stored in cm; shown in inches when the height unit is ft/in.
+- Charts: uPlot (`chart/UPlotChart.tsx`, own lazy chunk), colours read from the Midnight CSS tokens, readout + "Show as
+  table" in `TrendChart.tsx`. Not drawn in the test DOM (no canvas).
+- Photos (`/body/photos`, `/body/photos/compare?a=&b=&pose=`): resized to 1600 px JPEG + thumbnail (`photos/image.ts`),
+  stored as ArrayBuffers in Dexie only; `navigator.storage.persist()` is requested. The UI says plainly that photos are
+  never uploaded and don't sync between devices yet. Optional pose (front/side/back) for like-with-like compare.
 
 ## Onboarding & goals (`src/features/onboarding`, `src/features/profile/goals`)
 - First run: `OnboardingGate` (wraps the app shell) sends a profile without `onboarding` to `/welcome` — one
