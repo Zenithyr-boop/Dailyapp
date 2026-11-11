@@ -15,7 +15,7 @@
  * - Nothing is thrown away silently: a quest that exists in only one copy of a
  *   day is kept if it has any progress.
  */
-import type { BodyField, Day, MeasureKey, Profile, Quest, QuestDef, SyncedTable, SyncFields } from '../db'
+import type { BodyField, Day, DayStat, MeasureKey, Profile, Quest, QuestDef, SyncedTable, SyncFields } from '../db'
 import { rankIndex } from '../rank'
 
 type AnyRecord = SyncFields
@@ -115,6 +115,21 @@ function mergeBody(newer: Day, older: Day): Pick<Day, 'weightKg' | 'measurements
   }
 }
 
+const DAY_STATS: readonly DayStat[] = ['steps', 'sleepMinutes', 'waterMl']
+
+/** Steps, sleep and water merge one by one by `statsAt`, like body values. */
+function mergeStats(newer: Day, older: Day): Pick<Day, DayStat | 'statsAt'> {
+  const statsAt: Partial<Record<DayStat, number>> = {}
+  const out: Pick<Day, DayStat> = {}
+  for (const field of DAY_STATS) {
+    const atNewer = newer.statsAt?.[field] ?? 0
+    const atOlder = older.statsAt?.[field] ?? 0
+    out[field] = atNewer || atOlder ? (atOlder > atNewer ? older : newer)[field] : (newer[field] ?? older[field])
+    if (atNewer || atOlder) statsAt[field] = Math.max(atNewer, atOlder)
+  }
+  return { ...out, statsAt: Object.keys(statsAt).length ? statsAt : undefined }
+}
+
 /**
  * Merge two copies of the same day.
  * `concurrent` = the local copy has changes the cloud hasn't seen yet.
@@ -141,14 +156,11 @@ export function mergeDay(local: Day, remote: Day, concurrent: boolean): Day {
     }
   }
 
-  const pick = <K extends 'steps' | 'sleepMinutes' | 'waterMl'>(k: K) => newer[k] ?? older[k]
   const merged: Day = {
     ...older,
     ...newer,
     quests,
-    steps: pick('steps'),
-    sleepMinutes: pick('sleepMinutes'),
-    waterMl: pick('waterMl'),
+    ...mergeStats(newer, older),
     ...mergeBody(newer, older),
     updatedAt: Math.max(local.updatedAt, remote.updatedAt),
   }

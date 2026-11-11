@@ -16,10 +16,10 @@ export function isQuestDone(q: Pick<Quest, 'kind' | 'target' | 'value' | 'done'>
 
 /** A fresh, unchecked daily copy of a quest definition. */
 export function freshQuest(def: QuestDef): Quest {
-  const { id, title, xp, kind, target, unit, step } = def
+  const { id, title, xp, kind, target, unit, step, link } = def
   return kind === 'count'
     ? { id, title, xp, kind, target, unit, step, value: 0, done: false }
-    : { id, title, xp, kind, done: false }
+    : { id, title, xp, kind, done: false, ...(link ? { link } : {}) }
 }
 
 /**

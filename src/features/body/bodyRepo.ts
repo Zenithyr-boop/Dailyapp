@@ -7,8 +7,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, type BodyField, type Day, type MeasureKey } from '../../lib/db'
 import { getToday } from '../../lib/day'
-import { firstQuestDate, freshQuest } from '../quests/progress'
-import { ensureDay, ensureSetup, listQuestDefs } from '../quests/questsRepo'
+import { dayForWrite, ensureDay, ensureSetup } from '../quests/questsRepo'
 
 export class FutureDayError extends Error {
   constructor(date: string) {
@@ -43,12 +42,7 @@ export async function saveBody(date: string, changes: BodyChanges): Promise<void
   let weightChanged = false
   await db.transaction('rw', db.days, db.quests, async () => {
     const now = Date.now()
-    let day = await db.days.get(date)
-    if (!day || day.deleted) {
-      const first = firstQuestDate(await db.days.toArray())
-      const quests = first && date > first ? (await listQuestDefs()).map(freshQuest) : []
-      day = { date, quests, updatedAt: now }
-    }
+    const day = await dayForWrite(date)
 
     let weightKg = day.weightKg
     const measurements = { ...day.measurements }

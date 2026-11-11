@@ -279,3 +279,19 @@ describe('mergeDay body values', () => {
     expect(isPristine({ profile: profile({ goalWeightKg: 70 }), quests: [], days: [], otherRecords: 0 }, [])).toBe(false)
   })
 })
+
+describe('mergeDay daily stats', () => {
+  it('takes steps, sleep and water from the copy that changed each last', () => {
+    const local = day(10, [], { steps: 9000, waterMl: 500, statsAt: { steps: 10, waterMl: 2 } })
+    const remote = day(5, [], { steps: 4000, waterMl: 1500, sleepMinutes: 420, statsAt: { steps: 5, waterMl: 5, sleepMinutes: 5 } })
+    const merged = mergeDay(local, remote, true)
+    expect(merged).toMatchObject({ steps: 9000, waterMl: 1500, sleepMinutes: 420 })
+    expect(merged.statsAt).toEqual({ steps: 10, waterMl: 5, sleepMinutes: 5 })
+  })
+
+  it('lets a cleared value stay cleared', () => {
+    const cleared = day(5, [], { statsAt: { steps: 20 } })
+    const stale = day(30, [], { steps: 7000, statsAt: { steps: 10 } })
+    expect(mergeDay(cleared, stale, false).steps).toBeUndefined()
+  })
+})

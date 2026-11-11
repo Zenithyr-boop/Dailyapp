@@ -5,6 +5,7 @@ import { ALL_QUESTS_BONUS, progressFromDays } from '../../lib/xp'
 import { closeOutDays, MAX_BACKFILL_DAYS } from './closeOut'
 import { buildHistory } from './progress'
 import { DayLockedError, ensureDay, ensureSetup, setQuestDone } from './questsRepo'
+import { useManualQuests } from '../../test/manualQuests'
 
 // Only Date is faked: IndexedDB (fake-indexeddb) needs real timers.
 const setNow = (isoLocal: string) => vi.setSystemTime(new Date(isoLocal))
@@ -26,6 +27,7 @@ beforeEach(async () => {
   await db.delete()
   await db.open()
   await ensureSetup()
+  await useManualQuests()
 })
 
 afterEach(() => {

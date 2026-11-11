@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { db } from '../../lib/db'
+import { dayKeyAt } from '../../lib/day'
+import { refreshAutoQuests } from './autoQuests'
 import { QuestsPage } from './QuestsPage'
 
 function renderPage(url = '/quests') {
@@ -16,12 +18,28 @@ beforeEach(async () => {
 describe('QuestsPage', () => {
   it('shows the default quests, level and streak for a new user', async () => {
     renderPage()
-    expect(await screen.findByRole('checkbox', { name: /Train/ })).not.toBeChecked()
-    expect(screen.getAllByRole('checkbox')).toHaveLength(6)
+    expect(await screen.findByText('No workout finished yet')).toBeInTheDocument()
+    // Train, protein and steps are automatic: no checkbox, an AUTO tag and live progress.
+    expect(screen.getAllByRole('checkbox')).toHaveLength(3)
+    expect(screen.getAllByText('Auto')).toHaveLength(3)
+    expect(screen.getByText('0 / 8,000 steps')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Open Train for Train' })).toHaveAttribute('href', '/train')
     expect(screen.getByText('Level 1')).toBeInTheDocument()
     expect(screen.getByRole('img', { name: 'Rank E' })).toBeInTheDocument()
     expect(screen.getByText('0/6')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Edit quests' })).toHaveAttribute('href', '/quests/edit')
+  })
+
+  it('logs steps from the Today strip and ticks the steps quest', async () => {
+    renderPage()
+    fireEvent.click(await screen.findByRole('button', { name: /^Steps: 0. Log steps/ }))
+    const dialog = await screen.findByRole('dialog', { name: /Steps · Today/ })
+    fireEvent.change(within(dialog).getByLabelText('Steps'), { target: { value: '9200' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+    expect(await screen.findByText('9,200 / 8,000 steps')).toBeInTheDocument()
+    expect((await db.days.get(dayKeyAt()))?.steps).toBe(9200)
+    await refreshAutoQuests() // the app runs this on every change (startAutoQuests in main.tsx)
+    expect(await screen.findByText('1/6')).toBeInTheDocument()
   })
 
   it('checks a quest off and counts it', async () => {

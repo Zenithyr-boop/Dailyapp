@@ -23,7 +23,7 @@ describe('AppLayout', () => {
   it('shows all five tabs in the mobile tab bar', () => {
     renderAt('/')
     const [tabBar] = screen.getAllByRole('navigation', { name: 'Main' }).filter((n) => n.tagName === 'NAV' && n.className.includes('bottom-0'))
-    for (const label of ['Quests', 'Train', 'Food', 'Squad', 'Me']) {
+    for (const label of ['Quests', 'Train', 'Food', 'Body', 'Me']) {
       expect(within(tabBar!).getByRole('link', { name: label })).toBeInTheDocument()
     }
   })

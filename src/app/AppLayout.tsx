@@ -1,10 +1,11 @@
-import { Outlet } from 'react-router'
+import { Outlet, useMatches } from 'react-router'
 import { SideNav } from '../components/SideNav'
 import { TabBar } from '../components/TabBar'
 import { PRIMARY_NAV, SECONDARY_NAV } from './nav'
 
 /** App shell: side nav (desktop) or bottom tab bar (mobile) around the page. */
 export function AppLayout() {
+  const wide = useMatches().some((m) => (m.handle as { wide?: boolean } | undefined)?.wide)
   return (
     <div className="min-h-dvh">
       <a
@@ -18,7 +19,7 @@ export function AppLayout() {
         id="main"
         className="mx-auto w-full max-w-3xl px-4 pt-6 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pl-[calc(15rem+2rem)] md:pr-8 md:pt-10 md:pb-12 md:max-w-none lg:pr-12"
       >
-        <div className="md:max-w-3xl">
+        <div className={wide ? 'md:max-w-6xl' : 'md:max-w-3xl'}>
           <Outlet />
         </div>
       </main>

@@ -307,7 +307,7 @@ function StepBlocks({ total, current }: { total: number; current: number }) {
 }
 
 function questDetail(f: QuestFields): string {
-  const type = f.kind === 'count' ? `Target ${f.target} ${f.unit ?? ''}`.trim() : 'Checkbox'
+  const type = f.link ? 'Automatic' : f.kind === 'count' ? `Target ${f.target} ${f.unit ?? ''}`.trim() : 'Checkbox'
   return `${type} · ${f.xp} XP`
 }
 

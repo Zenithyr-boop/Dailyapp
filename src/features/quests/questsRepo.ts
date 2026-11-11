@@ -7,13 +7,14 @@ import { db, getMeta, setMeta, type Day, type Profile, type Quest, type QuestDef
 import { canEditQuests, getToday } from '../../lib/day'
 import { evaluateRank, rankIndex, type Rank } from '../../lib/rank'
 import { clampQuestXp, progressFromDays } from '../../lib/xp'
-import { addToCount, freshQuest, mergeQuests } from './progress'
+import { normalizeLink } from './links'
+import { addToCount, firstQuestDate, freshQuest, mergeQuests } from './progress'
 
 /** Starting quests for a new user. */
 export const DEFAULT_QUESTS: readonly QuestFields[] = [
-  { title: 'Train', xp: 120, kind: 'check' },
-  { title: 'Hit protein goal', xp: 60, kind: 'check' },
-  { title: 'Walk 8,000 steps', xp: 40, kind: 'check' },
+  { title: 'Train', xp: 120, kind: 'check', link: { source: 'workout' } },
+  { title: 'Hit protein goal', xp: 60, kind: 'check', link: { source: 'protein' } },
+  { title: 'Walk 8,000 steps', xp: 40, kind: 'check', link: { source: 'steps', target: 8000 } },
   { title: 'In bed by 23:00', xp: 40, kind: 'check' },
   { title: 'Read 10 pages', xp: 30, kind: 'check' },
   { title: 'No added sugar', xp: 30, kind: 'check' },
@@ -43,7 +44,7 @@ export function getCelebration(): Promise<Celebration | undefined> {
 export function normalizeFields(fields: QuestFields): QuestFields {
   const title = fields.title.trim() || 'Untitled quest'
   const xp = clampQuestXp(fields.xp)
-  if (fields.kind === 'check') return { title, xp, kind: 'check' }
+  if (fields.kind === 'check') return fields.link ? { title, xp, kind: 'check', link: normalizeLink(fields.link) } : { title, xp, kind: 'check' }
   const target = fields.target && fields.target > 0 ? fields.target : 1
   const step = fields.step && fields.step > 0 ? fields.step : 1
   return { title, xp, kind: 'count', target, unit: fields.unit?.trim() ?? '', step }
@@ -73,6 +74,20 @@ export async function ensureDay(date?: string): Promise<void> {
     await db.days.put({ date: key, quests: defs.map(freshQuest), updatedAt: Date.now() })
   })
   await checkMilestones()
+}
+
+/**
+ * The record to write body data or daily stats into (call inside a transaction
+ * on days + quests). A day with no record yet gets unchecked quests inside the
+ * user's quest history (like any missed day), or no quests before their first
+ * quest day, so it never counts as a miss.
+ */
+export async function dayForWrite(date: string): Promise<Day> {
+  const day = await db.days.get(date)
+  if (day && !day.deleted) return day
+  const first = firstQuestDate(await db.days.toArray())
+  const quests = first && date > first ? (await listQuestDefs()).map(freshQuest) : []
+  return { date, quests, updatedAt: Date.now() }
 }
 
 /**
@@ -116,14 +131,15 @@ async function updateDayQuest(date: string, id: string, change: (q: Quest) => Qu
   await db.transaction('rw', db.days, async () => {
     const day = await db.days.get(date)
     if (!day) return
-    const quests = day.quests.map((q) => (q.id === id ? { ...change(q), at: Date.now() } : q))
+    const quests = day.quests.map((q) => (q.id === id && !q.link ? { ...change(q), at: Date.now() } : q))
     await db.days.put({ ...day, quests, updatedAt: Date.now() })
   })
   await checkMilestones(today)
 }
 
 export function setQuestDone(date: string, id: string, done: boolean): Promise<void> {
-  return updateDayQuest(date, id, (q) => (q.kind === 'check' ? { ...q, done } : q))
+  // Automatic quests follow their data; they can't be ticked by hand.
+  return updateDayQuest(date, id, (q) => (q.kind === 'check' && !q.link ? { ...q, done } : q))
 }
 
 /** + / − on a count quest. `direction` 1 adds one step, -1 removes one. */
@@ -189,7 +205,7 @@ export async function setQuestList(chosen: readonly QuestFields[]): Promise<void
     // Only write quests that are new or changed (fewer uploads).
     const changed = next.filter((q) => {
       const old = before.get(q.id)
-      return !old || keys.some((k) => old[k] !== q[k])
+      return !old || keys.some((k) => old[k] !== q[k]) || JSON.stringify(old.link) !== JSON.stringify(q.link)
     })
     if (changed.length) await db.quests.bulkPut(changed)
     for (const d of unused) await db.quests.update(d.id, { deleted: 1 })
