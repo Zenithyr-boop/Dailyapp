@@ -80,16 +80,18 @@ export interface QuestFields {
   step?: number
   /** Automatic quests (kind 'check'): ticked from real data instead of by hand. See `features/quests/links.ts`. */
   link?: QuestLink
+  /** Set while the quest is a rule of a program (`ProgramState.id`); shown as a tag with the program's name. */
+  programId?: string
 }
 
 /** What an automatic quest follows. */
-export type LinkSource = 'steps' | 'sleep' | 'protein' | 'calories' | 'weighIn' | 'water' | 'workout'
+export type LinkSource = 'steps' | 'sleep' | 'protein' | 'calories' | 'weighIn' | 'water' | 'workout' | 'photo'
 
 export interface QuestLink {
   source: LinkSource
   /**
    * steps: step count; sleep: minutes; water: ml; calories: ± kcal around the goal.
-   * Unused for protein (follows the protein goal), weighIn and workout.
+   * Unused for protein (follows the protein goal), weighIn, workout and photo.
    */
   target?: number
 }
@@ -137,6 +139,15 @@ export interface Day extends SyncFields {
   waterMl?: number
   /** When steps, sleep and water last changed (ms), set or cleared; merged value by value like `bodyAt`. */
   statsAt?: Partial<Record<DayStat, number>>
+  /** Extra XP earned this day (finishing a program). Counted by `progressFromDays`; merged by id. */
+  bonuses?: DayBonus[]
+}
+
+/** Extra XP on a day, e.g. for finishing a program (`id` = the program's id, so it never counts twice). */
+export interface DayBonus {
+  id: string
+  label: string
+  xp: number
 }
 
 /**
@@ -330,13 +341,60 @@ export interface OffProduct {
   fetchedAt: number
 }
 
+/** How a program attempt ended. */
+export type AttemptEnd = 'missed' | 'ended' | 'finished'
+
+/** One run of a program, from its day 1 to the day it ended. */
+export interface ProgramAttempt {
+  startDate: string
+  /** The missed day (strict), the day it was ended, or the last day. */
+  endDate: string
+  /** Program days completed. */
+  daysDone: number
+  end: AttemptEnd
+}
+
+/** A quest the program took over when it started, with its fields from before (restored at the end). */
+export interface AdoptedQuest {
+  questId: string
+  before: QuestFields
+}
+
+export type ProgramStatus = 'active' | 'finished' | 'ended'
+
+/**
+ * A program (66-day reset, 75-day challenge, custom). Its rules are real quests
+ * tagged with `programId` while it runs; progress is worked out from the day
+ * records (`features/programs/progress.ts`). Only one is active at a time.
+ */
 export interface ProgramState extends SyncFields {
   id: string
-  /** e.g. '66-day-reset', '75-day-challenge', 'custom' */
+  /** Template: '66-day-reset', '75-day-challenge' or 'custom'. */
   kind: string
-  startDate: string
-  day: number
+  name: string
+  /** Days in the program. */
+  length: number
+  /** Strict: a missed day restarts the program at day 1. */
   strict: boolean
+  /** The rules it started with (the live ones are the quests tagged with this id). */
+  rules: QuestFields[]
+  /** Day 1 of the current attempt. */
+  startDate: string
+  /** Earlier attempts (strict restarts), plus the final one once it's over. */
+  attempts: ProgramAttempt[]
+  status: ProgramStatus
+  /** Quests the program added (removed when it's over). */
+  questIds: string[]
+  /** Quests the program took over (given back when it's over). */
+  adopted: AdoptedQuest[]
+  /** Day it finished or was ended. */
+  endDate?: string
+  /** Finished: days completed (every day in strict mode). */
+  daysDone?: number
+  /** Finished: the XP bonus (also on the last day's record, `Day.bonuses`). */
+  bonusXp?: number
+  /** Its quests were removed / given back (a finished program keeps them to the end of its last day). */
+  released?: boolean
 }
 
 /**
@@ -525,6 +583,12 @@ db.version(9)
         d.dirty = 1
       })
   })
+
+// v10: programs (rules as tagged quests, attempts, finish bonus). Nothing wrote
+// `programs` before v10, so there is nothing to migrate.
+db.version(10).stores({
+  programs: 'id, kind, status, dirty',
+})
 
 /** Tables that sync to Firestore. */
 export const SYNCED_TABLES = [

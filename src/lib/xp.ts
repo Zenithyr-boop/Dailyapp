@@ -129,16 +129,31 @@ export interface DerivedProgress extends LevelProgress {
   streak: number
 }
 
+/** Extra XP recorded on a day (finishing a program). */
+export function bonusXp(day: { bonuses?: ReadonlyArray<{ xp: number }> }): number {
+  return (day.bonuses ?? []).reduce((sum, b) => sum + b.xp, 0)
+}
+
+/** Everything a day is worth: its quests, the all-quests bonus and any extra bonus. */
+export function dayTotalXp(day: { quests: ReadonlyArray<{ xp: number; done: boolean }>; bonuses?: ReadonlyArray<{ xp: number }> }): number {
+  return dayXp(day.quests) + bonusXp(day)
+}
+
 /**
  * XP, level and streak, worked out from the day history every time.
  * Nothing here is stored or synced, so two devices that hold the same days
  * always show the same numbers. Deleted (tombstoned) days don't count.
  */
 export function progressFromDays(
-  days: ReadonlyArray<{ date: string; quests: ReadonlyArray<{ xp: number; done: boolean }>; deleted?: 1 }>,
+  days: ReadonlyArray<{
+    date: string
+    quests: ReadonlyArray<{ xp: number; done: boolean }>
+    bonuses?: ReadonlyArray<{ xp: number }>
+    deleted?: 1
+  }>,
   today: string,
 ): DerivedProgress {
   const live = days.filter((d) => !d.deleted)
-  const totalXp = live.reduce((sum, d) => sum + dayXp(d.quests), 0)
+  const totalXp = live.reduce((sum, d) => sum + dayTotalXp(d), 0)
   return { ...levelFromTotalXp(totalXp), totalXp, streak: computeStreak(completeDateSet(live), today) }
 }

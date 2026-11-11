@@ -170,15 +170,30 @@ export async function addQuest(fields: QuestFields): Promise<string> {
 export async function updateQuest(id: string, fields: QuestFields): Promise<void> {
   const def = await db.quests.get(id)
   if (!def) return
-  // put (not update) so fields from the old type, like `target`, are dropped.
-  await db.quests.put({ id, order: def.order, ...normalizeFields(fields), updatedAt: Date.now() })
+  // put (not update) so fields from the old type, like `target`, are dropped. A program rule stays one.
+  const tag = def.programId ? { programId: def.programId } : {}
+  await db.quests.put({ id, order: def.order, ...normalizeFields(fields), ...tag, updatedAt: Date.now() })
   await syncToday()
+}
+
+/** A program's rules can only go by ending the program (Programs). */
+export class ProgramQuestError extends Error {
+  constructor(title: string) {
+    super(`"${title}" is part of a program: end the program to remove it`)
+  }
 }
 
 /** Deleting leaves a tombstone so the deletion reaches the user's other devices. */
 export async function deleteQuest(id: string): Promise<void> {
+  const def = await db.quests.get(id)
+  if (def?.programId) throw new ProgramQuestError(def.title)
   await db.quests.update(id, { deleted: 1 })
   await syncToday()
+}
+
+/** Re-apply the quest list to today's record (after a program adds or removes its rules). */
+export function applyQuestsToToday(): Promise<void> {
+  return syncToday()
 }
 
 const sameQuestName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
@@ -187,11 +202,14 @@ const sameQuestName = (a: string, b: string) => a.trim().toLowerCase() === b.tri
  * Make the quest list exactly `chosen`, in that order (onboarding's starter
  * quests). Quests already in the list with the same title and type keep their
  * id, so today's progress on them stays; the rest are deleted (tombstones).
+ * A running program's rules are left as they are, after the chosen quests.
  */
 export async function setQuestList(chosen: readonly QuestFields[]): Promise<void> {
   await ensureSetup()
   await db.transaction('rw', db.quests, async () => {
-    const defs = await listQuestDefs()
+    const all = await listQuestDefs()
+    const defs = all.filter((d) => !d.programId)
+    const programQuests = all.filter((d) => d.programId)
     const unused = [...defs]
     const now = Date.now()
     const next: QuestDef[] = chosen.map((raw, order) => {
@@ -209,6 +227,9 @@ export async function setQuestList(chosen: readonly QuestFields[]): Promise<void
     })
     if (changed.length) await db.quests.bulkPut(changed)
     for (const d of unused) await db.quests.update(d.id, { deleted: 1 })
+    // Program rules go after the chosen quests (only moved when they'd sit in between).
+    const moved = programQuests.flatMap((d, i) => (d.order >= next.length ? [] : [{ ...d, order: next.length + i }]))
+    if (moved.length) await db.quests.bulkPut(moved)
   })
   await syncToday()
 }

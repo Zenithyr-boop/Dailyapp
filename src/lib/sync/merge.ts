@@ -162,9 +162,17 @@ export function mergeDay(local: Day, remote: Day, concurrent: boolean): Day {
     quests,
     ...mergeStats(newer, older),
     ...mergeBody(newer, older),
+    bonuses: mergeBonuses(newer.bonuses, older.bonuses),
     updatedAt: Math.max(local.updatedAt, remote.updatedAt),
   }
   return toCloud(merged)
+}
+
+/** Bonuses (finished programs) from both copies, one per id: a bonus is never lost or counted twice. */
+function mergeBonuses(newer: Day['bonuses'], older: Day['bonuses']): Day['bonuses'] {
+  const byId = new Map((older ?? []).map((b) => [b.id, b]))
+  for (const b of newer ?? []) byId.set(b.id, b)
+  return byId.size ? [...byId.values()] : undefined
 }
 
 /**

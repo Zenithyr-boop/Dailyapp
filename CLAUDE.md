@@ -96,6 +96,7 @@ Rules:
 - Quest XP: pick a difficulty (Easy 20 / Medium 40 / Hard 60 / Very hard 90 / Extreme 120),
   then fine-tune between 10 and 150. No unlimited values (keeps pacing and squads fair).
 - Finishing all quests: +80 XP bonus. Missing any quest resets the streak.
+- Finishing a program: +20 XP per program day, max 2,000 (`programs/templates.ts`), stored on its last day (`Day.bonuses`).
 - XP curve is exponential: +6% per level, base 850 (`lib/xp.ts`, with tests).
   A full default day = 400 XP → Level 10 in ~24 days, Level 50 in ~19 months.
 - Ranks use "rank trials" (`lib/rank.ts`): each rank needs a minimum level (E 1, D 5, C 10,
@@ -110,10 +111,11 @@ Rules:
   week; unset = maintain), `goals` (kcal, protein/fat/carbs g, `macroMode` auto/custom, steps, sleep, water ml),
   `mealNames` (the user's names for breakfast/lunch/dinner/snacks), `dayStartHour` (0–4, unset = midnight), `goalWeightKg`, earned rank and best level (both only go up).
   XP, level and streak are never stored: they're derived from the days (`progressFromDays` in `lib/xp.ts`).
-- `users/{uid}/quests/{id}` the user's quest list (title, xp, type, target/unit/step, `link` for automatic quests, order)
+- `users/{uid}/quests/{id}` the user's quest list (title, xp, type, target/unit/step, `link` for automatic quests, order,
+  `programId` while it's a program rule)
 - `users/{uid}/days/{YYYY-MM-DD}` a copy of that day's quests + progress, steps, `sleepMinutes`, `waterMl`,
   `statsAt` (change time per stat), weigh-in (`weightKg`), `measurements` (waist/chest/hips/arm/thigh cm),
-  `bodyAt` (change time per body value)
+  `bodyAt` (change time per body value), `bonuses` (program finish XP, merged by id)
   (edits to quests apply to today; past days stay frozen)
 - Progress photos (`photos` + `photoImages`) are device-only, never uploaded or synced
 - `users/{uid}/workouts/{id}` workout templates (items: movement, sets, target by tracking type, RPE, rest, note, superset group); `users/{uid}/sessions/{id}` logged sessions (exercises with targets and sets: kg, reps,
@@ -124,7 +126,9 @@ Rules:
   Open Food Facts product they completed); `users/{uid}/favorites/{foodId}` favourite foods (with a copy of the food);
   `users/{uid}/savedMeals/{id}` saved meals (name + portions)
 - The Open Food Facts product cache (`offProducts`) is device-only, never synced
-- `users/{uid}/programs/{id}` active program state (day N, strict mode)
+- `users/{uid}/programs/{id}` programs: template `kind`, name, length, strict, starting rules, `startDate` (day 1 of the
+  current attempt), `attempts`, status (active/finished/ended), `questIds` (added) and `adopted` (taken over + their
+  fields before), finish `daysDone`/`bonusXp`, `released`. Day N and the grid are derived from the days
 - `users/{uid}/movements/{id}` the user's custom movements (ids start with `custom-`)
 - The shared movement library is NOT in Firestore: it's bundled with the app (see "Movement library")
 - `squads/{id}` members, shared goal, progress; `community/{id}` public workout posts
@@ -225,7 +229,8 @@ squad data readable by members only; community posts readable by all signed-in u
 ## Today: automatic quests, daily stats, dashboard (`src/features/quests`, `src/features/today`)
 - Automatic quests are checkbox quests with a `link` (`links.ts`, unit-tested; defaults/limits for the coach at the
   top): steps ≥ N, sleep ≥ N min, protein ≥ goal, calories within ± N kcal of goal (needs food logged), weighed in,
-  water ≥ N ml, finished a workout. Protein/calories follow Me → Goals and say so when the goal is missing.
+  water ≥ N ml, finished a workout, progress photo that day. Protein/calories follow Me → Goals and say so when the goal
+  is missing. Photos never sync, so a photo quest only ever ticks itself (never unticks on a device without the photo).
 - `autoQuests.ts`: `refreshAutoQuests()` re-evaluates today's and yesterday's automatic quests and writes `done`
   (+ `at`) only when it changes; `startAutoQuests()` (main.tsx) runs it on every change via a Dexie liveQuery
   (food, sessions, day stats/weigh-in, goals, quest edits, synced data). Older days stay frozen. Only `done` is
@@ -238,6 +243,26 @@ squad data readable by members only; community posts readable by all signed-in u
   two-column dashboard (route `handle: { wide: true }` widens the shell): rank/level/XP header, daily quests, then
   Volume this week (Mon–Sun flat bars vs last week, `week.ts`), today's food, weight trend (`DashboardPanels.tsx`).
 - Tests that tick every default quest by hand call `useManualQuests()` (`src/test/manualQuests.ts`).
+
+## Programs (`src/features/programs`)
+- Templates in `templates.ts` (coach-editable; template ids are stored, never change them): 66-day reset (user picks
+  habits from their quests, ideas or new ones; not strict), 75-day challenge (fixed rules: two 45-min workouts, one
+  outdoors, diet, 3.8 L water auto, 10 pages, progress photo auto; strict by default), custom (name, 7–365 days, up to
+  12 rules of any quest type, strict on/off). Builder: `/programs/new/:template`. Day 1 = the day it starts.
+- One active program at a time (`ActiveProgramError`). Its rules are real quests tagged `programId` (tag with the program
+  name on Quests). A quest the user already has (same link source, or same title + type) is taken over instead of
+  doubled and given back with its old fields when the program is over. Program quests can't be deleted
+  (`ProgramQuestError`); onboarding's `setQuestList` leaves them alone; edits keep the tag.
+- `progress.ts` (pure, unit-tested): a day counts when every rule on that day's record is done; a day is missed only once
+  it's closed (older than yesterday). Strict: a miss ends the attempt and the next starts the day after the missed day.
+  Not strict: misses are marked. Finished = every day done (strict) or done/closed (not strict).
+- `programsRepo.ts`: `startPrograms()` (main.tsx) runs `refreshPrograms()` on program/day changes and new days: saves
+  strict restarts as `attempts`, puts missing rules on today's record, and on finish sets status, the day bonus on the
+  last day, a device-only celebration (`programCelebration` meta, rank-violet `ProgramCompleteDialog`, shown before a
+  level-up). A finished program keeps its quests until its last day is over (`released`), so that day's XP stays.
+  Ending a program removes its quests from today at once (with today's ticks on them) and records the attempt.
+- `/programs`: active program (Day N of L, 66 = 11×6 grid, legend, rules, End), past attempts, the three templates,
+  past programs. Quests shows a "Day N of L" strip; Me shows finished programs as badges (`BadgesPanel`).
 
 ## Body (`src/features/body`)
 - `/body`: one-field daily weigh-in (Enter saves), weight chart (raw weigh-ins as dots, 7-day moving average as the

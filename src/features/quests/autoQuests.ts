@@ -15,10 +15,11 @@ import { checkMilestones } from './questsRepo'
 
 /** Everything a day's automatic quests look at. */
 export async function linkDataFor(date: string, goals: Profile['goals'] = {}): Promise<LinkData> {
-  const [day, food, sessions] = await Promise.all([
+  const [day, food, sessions, photos] = await Promise.all([
     db.days.get(date),
     db.food.where('date').equals(date).toArray(),
     db.sessions.where('date').equals(date).toArray(),
+    db.photos.where('date').equals(date).count(),
   ])
   const entries = food.filter((e) => !e.deleted)
   const totals = sumTotals(entries)
@@ -31,6 +32,7 @@ export async function linkDataFor(date: string, goals: Profile['goals'] = {}): P
     proteinG: totals.proteinG,
     foodEntries: entries.length,
     workouts: sessions.filter((s) => !s.deleted && s.finishedAt !== undefined).length,
+    photos,
     goals: { kcal: goals.kcal, proteinG: goals.proteinG },
   }
 }
@@ -43,7 +45,7 @@ export async function refreshAutoQuests(today?: string): Promise<string[]> {
   const key = today ?? (await getToday())
   const changed: string[] = []
   for (const date of [addDays(key, -1), key]) {
-    const did = await db.transaction('rw', [db.days, db.profile, db.food, db.sessions], async () => {
+    const did = await db.transaction('rw', [db.days, db.profile, db.food, db.sessions, db.photos], async () => {
       const day = await db.days.get(date)
       if (!day || day.deleted || !day.quests.some((q) => q.link)) return false
       const data = await linkDataFor(date, (await db.profile.get('me'))?.goals)
@@ -53,6 +55,8 @@ export async function refreshAutoQuests(today?: string): Promise<string[]> {
         if (!q.link) return q
         const { done } = evaluateLink(q.link, data)
         if (done === q.done) return q
+        // Photos stay on the device they were taken on: another device (no photo) must not untick it.
+        if (q.link.source === 'photo' && q.done) return q
         any = true
         return { ...q, done, at: now }
       })

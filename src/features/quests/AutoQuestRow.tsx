@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
-import { QuestXp } from '../../components/QuestRow'
+import { ProgramTag, QuestXp } from '../../components/QuestRow'
 import { PlusIcon } from '../../components/icons'
 import type { Quest } from '../../lib/db'
 import type { UnitSystem } from '../../lib/units'
@@ -23,8 +23,11 @@ export function AutoQuestRow({
   locked,
   onStat,
   onAddWater,
+  programName,
 }: {
   quest: Quest
+  /** The program this quest is a rule of (shown as a tag). */
+  programName?: string
   data: LinkData | undefined
   date: string
   today: string
@@ -89,6 +92,13 @@ export function AutoQuestRow({
           </Link>
         )
         break
+      case 'photo':
+        action = (
+          <Link to="/body/photos" className={actionClass} aria-label={`Add a progress photo for ${quest.title}`}>
+            Photo
+          </Link>
+        )
+        break
     }
   }
 
@@ -111,6 +121,7 @@ export function AutoQuestRow({
           <span className="border border-panel-edge px-1 font-display text-[10px] font-bold uppercase leading-4 tracking-[0.12em] text-muted" title="Ticks itself from your data">
             Auto
           </span>
+          {programName && <ProgramTag name={programName} />}
         </span>
         {data && <span className="block text-xs text-muted">{describeLink(link, data, units)}</span>}
       </div>

@@ -2,7 +2,8 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { Button } from '../../components/Button'
-import { ArrowDownIcon, ArrowUpIcon, ChevronLeftIcon, EditIcon, PlusIcon, TrashIcon } from '../../components/icons'
+import { ArrowDownIcon, ArrowUpIcon, ChevronLeftIcon, EditIcon, PlusIcon, ProgramsIcon, TrashIcon } from '../../components/icons'
+import { useProgramNames } from '../programs/programsRepo'
 import { PageHeader } from '../../components/PageHeader'
 import { Panel } from '../../components/Panel'
 import type { QuestDef } from '../../lib/db'
@@ -28,6 +29,7 @@ export function EditQuestsPage() {
   }, [])
 
   const quests = useLiveQuery(listQuestDefs, [])
+  const programNames = useProgramNames()
   const units = useUnits()
   /** Quest id being edited, 'new' for the add form, or null. */
   const [editing, setEditing] = useState<string | null>(null)
@@ -113,10 +115,30 @@ export function EditQuestsPage() {
                       <IconButton label={`Edit ${q.title}`} onClick={() => setEditing(q.id)}>
                         <EditIcon size={18} />
                       </IconButton>
-                      <IconButton label={`Delete ${q.title}`} onClick={() => setConfirmDelete(q.id)}>
-                        <TrashIcon size={18} />
-                      </IconButton>
+                      {q.programId ? (
+                        <Link
+                          to="/programs"
+                          aria-label={`${q.title} is part of ${programNames?.get(q.programId) ?? 'a program'}: open Programs`}
+                          title="End the program to remove it"
+                          className="grid size-touch shrink-0 place-items-center text-faint hover:text-accent"
+                        >
+                          <ProgramsIcon size={18} />
+                        </Link>
+                      ) : (
+                        <IconButton label={`Delete ${q.title}`} onClick={() => setConfirmDelete(q.id)}>
+                          <TrashIcon size={18} />
+                        </IconButton>
+                      )}
                       </div>
+                      {q.programId && (
+                        <p className="w-full pb-1 text-xs text-muted">
+                          Part of {programNames?.get(q.programId) ?? 'a program'}. End the program on{' '}
+                          <Link to="/programs" className="text-accent underline underline-offset-2">
+                            Programs
+                          </Link>{' '}
+                          to remove it.
+                        </p>
+                      )}
                     </div>
                   )}
                 </li>

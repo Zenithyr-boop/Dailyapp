@@ -9,10 +9,12 @@ interface QuestRowProps {
   onToggle: (done: boolean) => void
   /** Read-only (a past day outside the grace period). */
   locked?: boolean
+  /** The program this quest is a rule of (shown as a tag). */
+  programName?: string
 }
 
 /** One checkbox quest: square checkbox, title, XP value. Whole row is the hit area. */
-export function QuestRow({ title, xp, done, sub, onToggle, locked = false }: QuestRowProps) {
+export function QuestRow({ title, xp, done, sub, onToggle, locked = false, programName }: QuestRowProps) {
   const id = useId()
   return (
     <label htmlFor={id} className={`flex min-h-[58px] items-center gap-3.5 py-2 ${locked ? '' : 'cursor-pointer'}`}>
@@ -36,11 +38,24 @@ export function QuestRow({ title, xp, done, sub, onToggle, locked = false }: Que
         <path d="M6.5 12.5l3.5 3.5 7.5-8" />
       </svg>
       <span className="min-w-0 flex-1">
-        <span className={`block font-medium ${done ? 'text-muted' : ''}`}>{title}</span>
+        <span className="flex flex-wrap items-center gap-x-2">
+          <span className={`font-medium ${done ? 'text-muted' : ''}`}>{title}</span>
+          {programName && <ProgramTag name={programName} />}
+        </span>
         {sub && <span className="block text-xs text-muted">{sub}</span>}
       </span>
       <QuestXp xp={xp} done={done} />
     </label>
+  )
+}
+
+/** Small tag naming the program a quest belongs to ("66-day reset"). */
+export function ProgramTag({ name }: { name: string }) {
+  return (
+    <span className="border border-accent px-1 font-display text-[10px] font-bold uppercase leading-4 tracking-[0.12em] text-accent">
+      <span className="sr-only">Program: </span>
+      {name}
+    </span>
   )
 }
 

@@ -1,4 +1,4 @@
-import { QuestXp } from '../../components/QuestRow'
+import { ProgramTag, QuestXp } from '../../components/QuestRow'
 import { MinusIcon, PlusIcon } from '../../components/icons'
 import type { Quest } from '../../lib/db'
 
@@ -9,10 +9,12 @@ interface CountQuestRowProps {
   onStep: (direction: 1 | -1) => void
   /** Read-only (a past day outside the grace period): no − / + buttons. */
   locked?: boolean
+  /** The program this quest is a rule of (shown as a tag). */
+  programName?: string
 }
 
 /** A number-target quest (e.g. 3 L water): progress bar plus − / + buttons. */
-export function CountQuestRow({ quest, onStep, locked = false }: CountQuestRowProps) {
+export function CountQuestRow({ quest, onStep, locked = false, programName }: CountQuestRowProps) {
   const value = quest.value ?? 0
   const target = quest.target ?? 1
   const unit = quest.unit ? ` ${quest.unit}` : ''
@@ -32,7 +34,10 @@ export function CountQuestRow({ quest, onStep, locked = false }: CountQuestRowPr
         )}
       </span>
       <div className="min-w-0 flex-1">
-        <span className={`block font-medium ${quest.done ? 'text-muted' : ''}`}>{quest.title}</span>
+        <span className="flex flex-wrap items-center gap-x-2">
+          <span className={`font-medium ${quest.done ? 'text-muted' : ''}`}>{quest.title}</span>
+          {programName && <ProgramTag name={programName} />}
+        </span>
         <span className="block text-xs text-muted">
           {fmt.format(value)} of {fmt.format(target)}
           {unit}
