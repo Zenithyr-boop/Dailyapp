@@ -1,4 +1,5 @@
 import { useId, useState, type FormEvent } from 'react'
+import { Link } from 'react-router'
 import { Button } from '../../components/Button'
 import { Dialog } from '../../components/Dialog'
 import type { DayStat } from '../../lib/db'
@@ -7,14 +8,16 @@ import type { UnitSystem } from '../../lib/units'
 import { submitOnEnter } from '../body/forms'
 import { formatWater, ML_PER_OZ } from '../quests/links'
 import { NumberField } from '../train/workouts/fields'
+import { isAndroidApp } from '../../lib/platform'
+import { useHealthState } from './healthSync'
 import { addWater, saveStats, type StatKind } from './statsRepo'
 
 const TITLES: Record<StatKind, string> = { steps: 'Steps', sleep: 'Sleep', water: 'Water' }
 
 /**
  * Quick entry for a day's steps, sleep or water (`?stat=` in the URL, so Back
- * closes it). Typed by hand on the website; the Android app will fill the same
- * values from Health Connect.
+ * closes it). Typed by hand; in the Android app steps and sleep can also come from
+ * Health Connect (`healthSync.ts`), which fills the same values.
  */
 export function StatDialog({
   stat,
@@ -37,8 +40,32 @@ export function StatDialog({
       {stat === 'steps' && <StepsForm date={date} steps={values.steps} onDone={onClose} />}
       {stat === 'sleep' && <SleepForm date={date} minutes={values.sleepMinutes} onDone={onClose} />}
       {stat === 'water' && <WaterForm date={date} ml={values.waterMl} units={units} onDone={onClose} />}
-      <p className="text-xs text-muted">The Android app will read this from Health Connect. On the website, type it in.</p>
+      {stat !== 'water' && <HealthHint />}
     </Dialog>
+  )
+}
+
+/** Where steps and sleep can come from instead of typing them. */
+function HealthHint() {
+  const health = useHealthState()
+  const linkClass = 'text-accent underline underline-offset-2 hover:text-text'
+  if (!isAndroidApp()) {
+    return <p className="text-xs text-muted">The Android app can read this from Health Connect. On the website, type it in.</p>
+  }
+  if (health?.connected) {
+    return (
+      <p className="text-xs text-muted">
+        Filled in from Health Connect. A number you type stays until Health Connect has a new one.
+      </p>
+    )
+  }
+  return (
+    <p className="text-xs text-muted">
+      <Link to="/me/health" className={linkClass}>
+        Connect Health Connect
+      </Link>{' '}
+      to fill this in by itself.
+    </p>
   )
 }
 

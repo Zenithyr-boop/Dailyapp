@@ -13,9 +13,19 @@
     "dev:emulator": "vite --mode emulator --port 5174",
     "emulators": "npx -y firebase-tools@15 emulators:start --only auth --project fromzero-ce670",
     "import:exercises": "node scripts/import-exercises.ts",
-    "import:foods": "node scripts/import-foods.ts"
+    "import:foods": "node scripts/import-foods.ts",
+    "icons": "node scripts/make-icons.ts && capacitor-assets generate --android --iconBackgroundColor \"#0B0E14\" --iconBackgroundColorDark \"#0B0E14\" --splashBackgroundColor \"#0B0E14\" --splashBackgroundColorDark \"#0B0E14\"",
+    "android:sync": "npm run build && cap sync android",
+    "android:open": "cap open android"
   },
   "dependencies": {
+    "@capacitor-community/keep-awake": "^8.0.1",
+    "@capacitor-firebase/authentication": "^8.6.0",
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.6.0",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capgo/capacitor-health": "^8.12.1",
     "@zxing/browser": "^0.1.5",
     "@zxing/library": "^0.21.3",
     "dexie": "^4.4.7",
@@ -27,6 +37,8 @@
     "uplot": "^1.6.32"
   },
   "devDependencies": {
+    "@capacitor/assets": "^4.0.0",
+    "@capacitor/cli": "^8.6.0",
     "@eslint/js": "^10.0.1",
     "@tailwindcss/vite": "^4.3.5",
     "@testing-library/jest-dom": "^7.0.1",
@@ -47,5 +59,10 @@
     "vite": "^8.3.7",
     "vite-plugin-pwa": "^2.0.0",
     "vitest": "^5.1.0"
+  },
+  "overrides": {
+    "@capacitor-firebase/authentication": {
+      "firebase": "$firebase"
+    }
   }
 }

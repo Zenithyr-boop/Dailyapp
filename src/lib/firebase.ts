@@ -1,6 +1,7 @@
 import type { FirebaseApp, FirebaseOptions } from 'firebase/app'
 import type { Auth } from 'firebase/auth'
 import type { Firestore } from 'firebase/firestore'
+import { isNativeApp } from './platform'
 
 /*
  * Firebase setup. The web config comes from the committed `.env` (VITE_FIREBASE_*).
@@ -42,8 +43,10 @@ export function getFirebaseApp(): Promise<FirebaseApp> {
 
 export function getFirebaseAuth(): Promise<Auth> {
   authPromise ??= Promise.all([getFirebaseApp(), import('firebase/auth')]).then(
-    ([app, { getAuth, connectAuthEmulator }]) => {
-      const auth = getAuth(app)
+    ([app, { getAuth, initializeAuth, indexedDBLocalPersistence, connectAuthEmulator }]) => {
+      // Android app: no popup/redirect support (it loads Google's iframe helpers, which a
+      // Capacitor WebView can't use); sign-in comes from the native plugin (lib/auth.ts).
+      const auth = isNativeApp() ? initializeAuth(app, { persistence: indexedDBLocalPersistence }) : getAuth(app)
       // Local testing only: `npm run dev:emulator` sets this (see `.env.emulator`).
       const emulatorUrl = env.VITE_FIREBASE_AUTH_EMULATOR_URL
       if (emulatorUrl) connectAuthEmulator(auth, emulatorUrl, { disableWarnings: true })
