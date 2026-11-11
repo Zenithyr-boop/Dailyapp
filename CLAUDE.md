@@ -84,14 +84,15 @@ Rules:
 - Progress = segmented blocks (XP bar is 10 blocks) or flat bars, not rings.
 - Touch targets ≥ 44px. Real `<button>`, `<a>`, `<input>` + `<label>`. aria-labels on icon buttons.
 - Icons: simple inline stroke SVGs (1.8px stroke), `currentColor`.
-- Mobile first: bottom tab bar (Quests, Train, Food, Squad, Me). Desktop: left side nav.
+- Mobile first: bottom tab bar (MVP: Quests, Train, Food, Body, Me; Squad returns after the MVP, its page
+  stays at /squad). Desktop: left side nav (Programs, Community under "More").
 - The approved mockups live in the claude.ai design canvas "Discipline app — design directions"
   (B-Web, B-Today, B-Squad). Match them.
 
 ## Progression rules
 - Daily quests = the user's habits for the day; each has an XP value. Reset when the user's day
   starts (midnight by default, up to 4 AM; see "Days").
-  Two types: checkbox, and number target (e.g. 3 L water, with a + step).
+  Three types: checkbox, number target (e.g. 3 L water, with a + step), and automatic (see "Today").
 - Quest XP: pick a difficulty (Easy 20 / Medium 40 / Hard 60 / Very hard 90 / Extreme 120),
   then fine-tune between 10 and 150. No unlimited values (keeps pacing and squads fair).
 - Finishing all quests: +80 XP bonus. Missing any quest resets the streak.
@@ -109,9 +110,10 @@ Rules:
   week; unset = maintain), `goals` (kcal, protein/fat/carbs g, `macroMode` auto/custom, steps, sleep, water ml),
   `mealNames` (the user's names for breakfast/lunch/dinner/snacks), `dayStartHour` (0–4, unset = midnight), `goalWeightKg`, earned rank and best level (both only go up).
   XP, level and streak are never stored: they're derived from the days (`progressFromDays` in `lib/xp.ts`).
-- `users/{uid}/quests/{id}` the user's quest list (title, xp, type, target/unit/step, order)
-- `users/{uid}/days/{YYYY-MM-DD}` a copy of that day's quests + progress, steps, sleep, weigh-in (`weightKg`),
-  `measurements` (waist/chest/hips/arm/thigh cm), `bodyAt` (change time per body value), water
+- `users/{uid}/quests/{id}` the user's quest list (title, xp, type, target/unit/step, `link` for automatic quests, order)
+- `users/{uid}/days/{YYYY-MM-DD}` a copy of that day's quests + progress, steps, `sleepMinutes`, `waterMl`,
+  `statsAt` (change time per stat), weigh-in (`weightKg`), `measurements` (waist/chest/hips/arm/thigh cm),
+  `bodyAt` (change time per body value)
   (edits to quests apply to today; past days stay frozen)
 - Progress photos (`photos` + `photoImages`) are device-only, never uploaded or synced
 - `users/{uid}/workouts/{id}` workout templates (items: movement, sets, target by tracking type, RPE, rest, note, superset group); `users/{uid}/sessions/{id}` logged sessions (exercises with targets and sets: kg, reps,
@@ -186,7 +188,8 @@ squad data readable by members only; community posts readable by all signed-in u
 - Rest timer (`restTimer.ts`): starts on tick with the movement's rest (inside a superset only after the last
   movement), end time in device-only meta, beep + vibrate at zero. Screen Wake Lock while a session is open
   (browser/PWA only; the APK will need a native keep-awake plugin).
-- Finishing keeps only ticked sets and ticks the session day's quest titled "Train" (its XP comes from the day as usual).
+- Finishing keeps only ticked sets; the session day's automatic Workout quest ticks itself (`TrainQuestResult` reports
+  checked / already / missing / locked). Deleting the session unticks it again inside the grace window.
 - `records.ts`: Epley e1RM, PRs vs earlier sessions (none on a movement's first log), "last time", totals.
 - `progression.ts` — tunable by the coach: next-time rule, +2.5 kg lower body / +1.25 kg upper body (by primary
   muscle), plate steps.
@@ -218,6 +221,23 @@ squad data readable by members only; community posts readable by all signed-in u
   UPC-E is expanded to UPC-A. Typing the number always works. The APK will need the `CAMERA` permission in
   AndroidManifest.xml (no Android project yet).
 - Credits for USDA and Open Food Facts (ODbL) are in About on the Me screen.
+
+## Today: automatic quests, daily stats, dashboard (`src/features/quests`, `src/features/today`)
+- Automatic quests are checkbox quests with a `link` (`links.ts`, unit-tested; defaults/limits for the coach at the
+  top): steps ≥ N, sleep ≥ N min, protein ≥ goal, calories within ± N kcal of goal (needs food logged), weighed in,
+  water ≥ N ml, finished a workout. Protein/calories follow Me → Goals and say so when the goal is missing.
+- `autoQuests.ts`: `refreshAutoQuests()` re-evaluates today's and yesterday's automatic quests and writes `done`
+  (+ `at`) only when it changes; `startAutoQuests()` (main.tsx) runs it on every change via a Dexie liveQuery
+  (food, sessions, day stats/weigh-in, goals, quest edits, synced data). Older days stay frozen. Only `done` is
+  stored; live numbers are computed on screen (`linkDataFor`). They can't be ticked by hand (`setQuestDone` skips them).
+- db v9 made existing "Train" quests automatic Workout quests. New users' Train, protein and steps quests are
+  automatic; starter water, calories and weigh-in options too. Other existing quests change only if the user edits them.
+- Daily stats (`today/statsRepo.ts`): steps, sleep, water typed by hand for any day up to today (`?stat=steps|sleep|water`
+  dialogs); the APK will fill the same fields from Health Connect. `addWater` reads and writes in one transaction.
+- Quests screen: Today strip (steps, sleep, kcal, protein) above the quests on every size. Desktop (`lg`) is a wide
+  two-column dashboard (route `handle: { wide: true }` widens the shell): rank/level/XP header, daily quests, then
+  Volume this week (Mon–Sun flat bars vs last week, `week.ts`), today's food, weight trend (`DashboardPanels.tsx`).
+- Tests that tick every default quest by hand call `useManualQuests()` (`src/test/manualQuests.ts`).
 
 ## Body (`src/features/body`)
 - `/body`: one-field daily weigh-in (Enter saves), weight chart (raw weigh-ins as dots, 7-day moving average as the
