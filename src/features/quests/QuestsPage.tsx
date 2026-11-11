@@ -22,6 +22,9 @@ import { addWater, isStatKind } from '../today/statsRepo'
 import { TodayStrip } from '../today/TodayStrip'
 import { AutoQuestRow } from './AutoQuestRow'
 import { linkDataFor } from './autoQuests'
+import { ProgramCompleteDialog } from '../programs/ProgramCompleteDialog'
+import { ProgramStrip } from '../programs/ProgramStrip'
+import { dismissProgramCelebration, getProgramCelebration, useProgramNames } from '../programs/programsRepo'
 
 /** A tick that lands after the day closed (the clock moved on) is simply dropped. */
 const ignoreLocked = (p: Promise<void>) => p.catch(() => {})
@@ -42,6 +45,8 @@ export function QuestsPage() {
   const profile = useLiveQuery(() => db.profile.get('me'), [])
   const qd = useQuestDays(today)
   const celebration = useLiveQuery(getCelebration, [])
+  const programCelebration = useLiveQuery(getProgramCelebration, [])
+  const programNames = useProgramNames()
   const todayRecord = qd?.byDate.get(today)
   const goals = profile?.goals
   // Live numbers for the strip and automatic quests (re-read whenever food, stats, workouts or goals change).
@@ -61,6 +66,7 @@ export function QuestsPage() {
   const done = quests.filter((q) => q.done).length
   const countdown = formatCountdown(msLeft)
   const status = isToday ? `resets in ${countdown}` : editable ? `open for ${countdown}` : 'closed'
+  const programOf = (q: { programId?: string }) => (q.programId ? programNames?.get(q.programId) : undefined)
 
   return (
     <div className="space-y-6">
@@ -73,6 +79,8 @@ export function QuestsPage() {
       />
 
       <TodayStrip date={date} today={today} data={linkData} goals={profile.goals} onStat={(s) => overlay.open('stat', s)} />
+
+      <ProgramStrip today={today} byDate={qd.byDate} />
 
       <div className="space-y-6 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-6 lg:space-y-0 xl:grid-cols-[minmax(0,1fr)_25rem]">
       <div className="space-y-6">
@@ -133,15 +141,22 @@ export function QuestsPage() {
                     locked={!editable}
                     onStat={(s) => overlay.open('stat', s)}
                     onAddWater={(ml) => void addWater(date, ml)}
+                    programName={programOf(q)}
                   />
                 ) : q.kind === 'count' ? (
-                  <CountQuestRow quest={q} locked={!editable} onStep={(dir) => ignoreLocked(stepCount(date, q.id, dir))} />
+                  <CountQuestRow
+                    quest={q}
+                    locked={!editable}
+                    programName={programOf(q)}
+                    onStep={(dir) => ignoreLocked(stepCount(date, q.id, dir))}
+                  />
                 ) : (
                   <QuestRow
                     title={q.title}
                     xp={q.xp}
                     done={q.done}
                     locked={!editable}
+                    programName={programOf(q)}
                     onToggle={(v) => ignoreLocked(setQuestDone(date, q.id, v))}
                   />
                 )}
@@ -181,7 +196,10 @@ export function QuestsPage() {
         />
       )}
 
-      {celebration && (
+      {/* A finished program first, then any level-up it brought. */}
+      {programCelebration ? (
+        <ProgramCompleteDialog celebration={programCelebration} onClose={dismissProgramCelebration} />
+      ) : celebration && (
         <LevelUpDialog
           level={celebration.level}
           rank={celebration.rank}

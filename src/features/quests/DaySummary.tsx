@@ -4,7 +4,7 @@ import { Link } from 'react-router'
 import { ChevronRightIcon } from '../../components/icons'
 import type { Day, Profile } from '../../lib/db'
 import { canEditQuests } from '../../lib/day'
-import { ALL_QUESTS_BONUS, dayXp, isDayComplete } from '../../lib/xp'
+import { ALL_QUESTS_BONUS, dayTotalXp, isDayComplete } from '../../lib/xp'
 import { entriesForDay } from '../food/foodLogRepo'
 import { sumTotals } from '../food/nutrition'
 import { CalorieBar, MacroBar } from '../food/ui/TotalsBars'
@@ -31,7 +31,7 @@ export function DaySummary({ date, today, day, firstDate, profile }: DaySummaryP
   const quests = day?.quests ?? []
   const done = quests.filter((q) => q.done).length
   const complete = isDayComplete(quests)
-  const xp = day ? dayXp(quests) : 0
+  const xp = day ? dayTotalXp(day) : 0
   const query = date === today ? '' : `?date=${date}`
   const totals = sumTotals(food ?? [])
 
@@ -68,6 +68,11 @@ export function DaySummary({ date, today, day, firstDate, profile }: DaySummaryP
                 All quests bonus <span className="font-display tabular-nums text-accent">+{ALL_QUESTS_BONUS}</span>
               </li>
             )}
+            {day.bonuses?.map((b) => (
+              <li key={b.id} className="flex justify-between py-1.5 text-sm text-rank">
+                {b.label} <span className="font-display tabular-nums">+{fmt.format(b.xp)}</span>
+              </li>
+            ))}
           </ul>
         )}
         <SummaryLink to={`/quests${query}`}>{canEditQuests(date, today) ? 'Open quests' : 'View quests'}</SummaryLink>

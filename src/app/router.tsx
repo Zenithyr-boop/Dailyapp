@@ -26,6 +26,7 @@ import { MeasurementsPage } from '../features/body/MeasurementsPage'
 import { PhotosPage } from '../features/body/photos/PhotosPage'
 import { ComparePage } from '../features/body/photos/ComparePage'
 import { ProgramsPage } from '../features/programs/ProgramsPage'
+import { ProgramBuilderPage } from '../features/programs/ProgramBuilderPage'
 import { CommunityPage } from '../features/community/CommunityPage'
 
 export const router = createBrowserRouter([
@@ -68,6 +69,7 @@ export const router = createBrowserRouter([
       { path: 'body/photos', element: <PhotosPage /> },
       { path: 'body/photos/compare', element: <ComparePage /> },
       { path: 'programs', element: <ProgramsPage /> },
+      { path: 'programs/new/:template', element: <ProgramBuilderPage /> },
       { path: 'community', element: <CommunityPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],

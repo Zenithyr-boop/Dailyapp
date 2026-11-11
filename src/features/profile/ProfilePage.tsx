@@ -7,6 +7,7 @@ import { Panel } from '../../components/Panel'
 import { AccountPanel } from './AccountPanel'
 import { DATASET_URL } from '../train/library/dataset'
 import { GoalsPanel } from './goals/GoalsPanel'
+import { BadgesPanel } from '../programs/BadgesPanel'
 import { DayStartPanel } from './DayStartPanel'
 import { HeightUnitToggle, UnitToggle } from './UnitToggle'
 
@@ -16,6 +17,7 @@ export function ProfilePage() {
       <PageHeader title="Me" />
       <div className="space-y-4">
         <GoalsPanel />
+        <BadgesPanel />
         <AccountPanel />
         <Panel title="Units">
           <div className="space-y-4">
