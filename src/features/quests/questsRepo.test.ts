@@ -1,3 +1,4 @@
+import { useManualQuests } from '../../test/manualQuests'
 import { db } from '../../lib/db'
 import { progressFromDays, totalXpForLevel } from '../../lib/xp'
 import {
@@ -35,6 +36,7 @@ beforeEach(async () => {
   await db.delete()
   await db.open()
   await ensureSetup()
+  await useManualQuests()
 })
 
 afterEach(() => {
@@ -44,6 +46,7 @@ afterEach(() => {
 describe('setup', () => {
   it('creates the six default quests once', async () => {
     await ensureSetup()
+    await useManualQuests()
     const defs = await listQuestDefs()
     expect(defs.map((d) => [d.title, d.xp])).toEqual([
       ['Train', 120],
@@ -58,6 +61,7 @@ describe('setup', () => {
   it('does not bring defaults back after the user deletes them all', async () => {
     for (const d of await listQuestDefs()) await deleteQuest(d.id)
     await ensureSetup()
+    await useManualQuests()
     expect(await listQuestDefs()).toHaveLength(0)
   })
 })

@@ -6,6 +6,7 @@ import { deleteWorkout, getWorkout, listStoredWorkouts, saveWorkout, workoutList
 import { DEFAULT_QUESTS, ensureDay, ensureSetup, listQuestDefs, setQuestDone } from '../../features/quests/questsRepo'
 import { countPending, getSyncStatus, startSync, stopSync } from './engine'
 import type { RemoteBatch, RemoteStore } from './remote'
+import { useManualQuests } from '../../test/manualQuests'
 
 /** In-memory stand-in for Firestore: one account, server clock, live listeners. */
 class FakeCloud {
@@ -98,6 +99,7 @@ afterEach(() => {
 describe('first sign-in', () => {
   it('uploads everything on this device when the account is empty', async () => {
     await ensureSetup()
+    await useManualQuests()
     await ensureDay(today)
     start()
     await settled()
@@ -114,6 +116,7 @@ describe('first sign-in', () => {
     cloud.put('days', { date: '2026-11-08', quests: [{ ...q, done: true, at: 5 }], updatedAt: 5 } as Day)
     // This device: brand new.
     await ensureSetup()
+    await useManualQuests()
     await ensureDay(today)
     start()
     await settled()
@@ -128,6 +131,7 @@ describe('first sign-in', () => {
     cloud.put('workouts', { id: 'w-own', name: 'Arms', items: [], updatedAt: 6 } as WorkoutTemplate)
     // This device: brand new. Browsing the starters stores nothing.
     await ensureSetup()
+    await useManualQuests()
     await ensureDay(today)
     expect(workoutLists(await listStoredWorkouts()).programs).toHaveLength(3)
     expect(await db.workouts.count()).toBe(0)
@@ -147,6 +151,7 @@ describe('first sign-in', () => {
   it('merges a used device into an account with data, matching starter quests by name', async () => {
     // Account made on the phone: starter quests with its own ids, "Train" ticked today.
     await ensureSetup()
+    await useManualQuests()
     const phoneDefs = (await listQuestDefs()).map((d, i) => ({ ...d, id: `phone-${i}` }))
     phoneDefs.forEach((d) => cloud.put('quests', d))
     cloud.put('days', {
@@ -179,6 +184,7 @@ describe('first sign-in', () => {
 describe('ongoing sync', () => {
   beforeEach(async () => {
     await ensureSetup()
+    await useManualQuests()
     await ensureDay(today)
     start()
     await settled()

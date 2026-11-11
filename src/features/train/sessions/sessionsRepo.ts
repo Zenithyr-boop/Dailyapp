@@ -6,7 +6,8 @@
  */
 import { db, type LoggedSet, type Session, type SessionExercise, type WorkoutItem, type WorkoutTemplate } from '../../../lib/db'
 import { canEditQuests, dayKeyAt, getDayStartHour, getToday } from '../../../lib/day'
-import { ensureDay, ensureSetup, setQuestDone } from '../../quests/questsRepo'
+import { refreshAutoQuests } from '../../quests/autoQuests'
+import { ensureDay, ensureSetup } from '../../quests/questsRepo'
 import type { TrackingType } from '../library/types'
 import { targetKind } from '../workouts/targets'
 import { lastTimeSets } from './records'
@@ -197,19 +198,9 @@ export function applyWeight(s: Session, exKey: string, kg: number): Session {
 /** `locked` = the session's day is older than yesterday, so its quests can't change any more. */
 export type TrainQuestResult = 'checked' | 'already' | 'missing' | 'locked'
 
-/** Tick the "Train" quest of `date` (default today), which awards its XP. Only today and yesterday. */
-export async function tickTrainQuest(date?: string): Promise<TrainQuestResult> {
-  const today = await getToday()
-  const key = date ?? today
-  if (!canEditQuests(key, today)) return 'locked'
-  await ensureSetup()
-  await ensureDay(key)
-  const day = await db.days.get(key)
-  const quest = day?.quests.find((q) => q.kind === 'check' && q.title.trim().toLowerCase() === 'train')
-  if (!quest) return 'missing'
-  if (quest.done) return 'already'
-  await setQuestDone(key, quest.id, true)
-  return 'checked'
+/** The day's automatic Workout quest, ticked or not (undefined = there isn't one). */
+async function workoutQuestDone(date: string): Promise<boolean | undefined> {
+  return (await db.days.get(date))?.quests.find((q) => q.link?.source === 'workout')?.done
 }
 
 export function hasDoneSets(s: Session): boolean {
@@ -218,11 +209,19 @@ export function hasDoneSets(s: Session): boolean {
 
 /**
  * Finish a session: keep only the sets that were done (and the movements that
- * have any), stamp the finish time, tick the Train quest of the session's day
- * (the day it started, or the past day it was logged for).
+ * have any) and stamp the finish time. The automatic Workout quest of the
+ * session's day (the day it started, or the past day it was logged for) ticks
+ * itself (`autoQuests.ts`); the result says what happened to it.
  */
 export async function finishSession(id: string, now = Date.now()): Promise<TrainQuestResult> {
-  const date = (await getSession(id))?.date
+  const today = await getToday()
+  const date = (await getSession(id))?.date ?? (await getToday(now))
+  const locked = !canEditQuests(date, today)
+  if (!locked) {
+    await ensureSetup()
+    await ensureDay(date)
+  }
+  const before = await workoutQuestDone(date)
   await updateSession(id, (s) => ({
     ...s,
     finishedAt: now,
@@ -230,7 +229,11 @@ export async function finishSession(id: string, now = Date.now()): Promise<Train
       .map((e) => ({ ...e, sets: e.sets.filter((x) => x.done) }))
       .filter((e) => e.sets.length > 0),
   }))
-  return tickTrainQuest(date ?? (await getToday(now)))
+  if (locked) return 'locked'
+  if (before === undefined) return 'missing'
+  if (before) return 'already'
+  await refreshAutoQuests(today)
+  return (await workoutQuestDone(date)) ? 'checked' : 'missing'
 }
 
 /** Discard (in progress) or delete (finished). */

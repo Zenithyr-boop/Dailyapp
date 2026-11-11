@@ -78,6 +78,20 @@ export interface QuestFields {
   target?: number
   unit?: string
   step?: number
+  /** Automatic quests (kind 'check'): ticked from real data instead of by hand. See `features/quests/links.ts`. */
+  link?: QuestLink
+}
+
+/** What an automatic quest follows. */
+export type LinkSource = 'steps' | 'sleep' | 'protein' | 'calories' | 'weighIn' | 'water' | 'workout'
+
+export interface QuestLink {
+  source: LinkSource
+  /**
+   * steps: step count; sleep: minutes; water: ml; calories: ± kcal around the goal.
+   * Unused for protein (follows the protein goal), weighIn and workout.
+   */
+  target?: number
 }
 
 /** One of the user's quests (habits). Copied into each day's record. */
@@ -102,6 +116,8 @@ export type MeasureKey = 'waistCm' | 'chestCm' | 'hipsCm' | 'armCm' | 'thighCm'
 export type Measurements = Partial<Record<MeasureKey, number>>
 /** The body values a day can hold (weigh-in + measurements). */
 export type BodyField = 'weightKg' | MeasureKey
+/** Daily stats entered by hand (or, in the APK, read from Health Connect). */
+export type DayStat = 'steps' | 'sleepMinutes' | 'waterMl'
 
 export interface Day extends SyncFields {
   /** `YYYY-MM-DD`, local time. */
@@ -119,6 +135,8 @@ export interface Day extends SyncFields {
    */
   bodyAt?: Partial<Record<BodyField, number>>
   waterMl?: number
+  /** When steps, sleep and water last changed (ms), set or cleared; merged value by value like `bodyAt`. */
+  statsAt?: Partial<Record<DayStat, number>>
 }
 
 /**
@@ -475,6 +493,38 @@ db.version(8).stores({
   photos: 'id, date, addedAt',
   photoImages: 'id',
 })
+
+// v9: automatic quests. The "Train" checkbox quest already ticked itself when a
+// workout was finished (matched by title); it becomes an automatic Workout quest.
+// The copies on the last few days get the link too, so today's quest follows at once.
+db.version(9)
+  .stores({})
+  .upgrade(async (tx) => {
+    const isTrain = (q: QuestFields) => q.kind === 'check' && !q.link && q.title.trim().toLowerCase() === 'train'
+    const now = Date.now()
+    await tx
+      .table('quests')
+      .toCollection()
+      .modify((q: QuestDef) => {
+        if (q.deleted || !isTrain(q)) return
+        q.link = { source: 'workout' }
+        q.updatedAt = now
+        q.dirty = 1
+      })
+    const recent = new Date()
+    recent.setDate(recent.getDate() - 2)
+    const from = `${recent.getFullYear()}-${String(recent.getMonth() + 1).padStart(2, '0')}-${String(recent.getDate()).padStart(2, '0')}`
+    await tx
+      .table('days')
+      .where('date')
+      .aboveOrEqual(from)
+      .modify((d: Day) => {
+        if (!d.quests.some(isTrain)) return
+        d.quests = d.quests.map((q) => (isTrain(q) ? { ...q, link: { source: 'workout' } } : q))
+        d.updatedAt = now
+        d.dirty = 1
+      })
+  })
 
 /** Tables that sync to Firestore. */
 export const SYNCED_TABLES = [
