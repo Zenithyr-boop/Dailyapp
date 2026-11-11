@@ -37,8 +37,10 @@ describe('automatic quests', () => {
     const today = dayKeyAt()
     await addQuest({ title: 'Drink 2 L', xp: 30, kind: 'check', link: { source: 'water', target: 2000 } })
     await addQuest({ title: 'Weigh in', xp: 20, kind: 'check', link: { source: 'weighIn' } })
-    await addWater(today, 1500)
-    await addWater(today, 500)
+    await addWater(today, 1000)
+    // Quick taps both count.
+    await Promise.all([addWater(today, 500), addWater(today, 500)])
+    expect((await db.days.get(today))?.waterMl).toBe(2000)
     await saveWeight(today, 80)
     expect(await refreshAutoQuests(today)).toEqual([today])
     expect((await quest(today, 'Drink 2 L')).done).toBe(true)

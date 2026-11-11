@@ -40,7 +40,8 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <Navigate to="/quests" replace /> },
-      { path: 'quests', element: <QuestsPage /> },
+      // Wide: the desktop dashboard (quests + panels) uses more of the screen.
+      { path: 'quests', element: <QuestsPage />, handle: { wide: true } },
       { path: 'quests/edit', element: <EditQuestsPage /> },
       { path: 'quests/history', element: <HistoryPage /> },
       { path: 'train', element: <TrainPage /> },

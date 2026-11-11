@@ -5,10 +5,17 @@
  * Health Connect. Each value carries its own change time (`statsAt`) so sync
  * merges them one by one and a cleared value stays cleared.
  */
-import { db, type DayStat } from '../../lib/db'
+import { db, type Day, type DayStat } from '../../lib/db'
 import { getToday } from '../../lib/day'
 import { FutureDayError } from '../body/bodyRepo'
 import { dayForWrite, ensureDay, ensureSetup } from '../quests/questsRepo'
+
+/** The quick-entry dialogs (`?stat=`). */
+export type StatKind = 'steps' | 'sleep' | 'water'
+
+export function isStatKind(v: unknown): v is StatKind {
+  return v === 'steps' || v === 'sleep' || v === 'water'
+}
 
 /** Values to set (a number) or clear (undefined). */
 export type StatChanges = Partial<Record<DayStat, number | undefined>>
@@ -26,13 +33,22 @@ function clean(field: DayStat, v: number | undefined): number | undefined {
   return Math.round(Math.min(max, Math.max(min, v)))
 }
 
-export async function saveStats(date: string, changes: StatChanges): Promise<void> {
+export function saveStats(date: string, changes: StatChanges): Promise<void> {
+  return updateStats(date, () => changes)
+}
+
+/**
+ * Change stats from the day's current values, read inside the same
+ * transaction (so two quick taps on "+250 ml" both count).
+ */
+async function updateStats(date: string, changesFor: (day: Day) => StatChanges): Promise<void> {
   const today = await getToday()
   if (date > today) throw new FutureDayError(date)
   await ensureSetup()
   if (date === today) await ensureDay(today)
   await db.transaction('rw', db.days, db.quests, async () => {
     const day = await dayForWrite(date)
+    const changes = changesFor(day)
     const now = Date.now()
     const next = { ...day, statsAt: { ...day.statsAt } }
     let changed = false
@@ -51,7 +67,6 @@ export async function saveStats(date: string, changes: StatChanges): Promise<voi
 }
 
 /** Add (or with a negative amount, remove) water, never below 0. */
-export async function addWater(date: string, ml: number): Promise<void> {
-  const current = (await db.days.get(date))?.waterMl ?? 0
-  await saveStats(date, { waterMl: Math.max(0, current + ml) })
+export function addWater(date: string, ml: number): Promise<void> {
+  return updateStats(date, (day) => ({ waterMl: Math.max(0, (day.waterMl ?? 0) + ml) }))
 }

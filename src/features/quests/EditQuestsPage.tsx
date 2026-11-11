@@ -7,12 +7,16 @@ import { PageHeader } from '../../components/PageHeader'
 import { Panel } from '../../components/Panel'
 import type { QuestDef } from '../../lib/db'
 import { difficultyForXp } from '../../lib/xp'
+import type { UnitSystem } from '../../lib/units'
+import { useUnits } from '../profile/units'
+import { linkSummary } from './links'
 import { QuestForm } from './QuestForm'
 import { addQuest, deleteQuest, ensureSetup, listQuestDefs, moveQuest, updateQuest } from './questsRepo'
 
 const fmt = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 })
 
-function summary(q: QuestDef): string {
+function summary(q: QuestDef, units: UnitSystem): string {
+  if (q.link) return `Auto · ${linkSummary(q.link, units)} · ${difficultyForXp(q.xp)?.label ?? 'Custom'}`
   const type = q.kind === 'count' ? `Target ${fmt.format(q.target ?? 1)}${q.unit ? ` ${q.unit}` : ''}` : 'Checkbox'
   return `${type} · ${difficultyForXp(q.xp)?.label ?? 'Custom'}`
 }
@@ -24,6 +28,7 @@ export function EditQuestsPage() {
   }, [])
 
   const quests = useLiveQuery(listQuestDefs, [])
+  const units = useUnits()
   /** Quest id being edited, 'new' for the add form, or null. */
   const [editing, setEditing] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
@@ -90,7 +95,7 @@ export function EditQuestsPage() {
                       <div className="flex min-w-[12rem] flex-1 items-center gap-2">
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-medium">{q.title}</p>
-                          <p className="text-xs text-muted">{summary(q)}</p>
+                          <p className="text-xs text-muted">{summary(q, units)}</p>
                         </div>
                         <span className="mr-1 font-display font-semibold tabular-nums text-accent">+{q.xp}</span>
                       </div>

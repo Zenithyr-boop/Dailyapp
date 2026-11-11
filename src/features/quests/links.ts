@@ -171,3 +171,34 @@ export function linkSummary(link: QuestLink, units: UnitSystem): string {
       return 'Finished a workout that day'
   }
 }
+
+/** The quest's number as typed in the form, in the user's units (sleep in hours, water in L or oz). */
+export function targetForInput(link: QuestLink, units: UnitSystem): string {
+  const l = normalizeLink(link)
+  if (l.target === undefined) return ''
+  switch (l.source) {
+    case 'sleep':
+      return String(+(l.target / 60).toFixed(2))
+    case 'water':
+      return units === 'metric' ? String(+(l.target / 1000).toFixed(2)) : String(Math.round(l.target / ML_PER_OZ))
+    default:
+      return String(l.target)
+  }
+}
+
+/** A typed number back to the stored unit (steps, minutes, ml, kcal). */
+export function targetFromInput(source: LinkSource, value: number, units: UnitSystem): number {
+  switch (source) {
+    case 'sleep':
+      return value * 60
+    case 'water':
+      return units === 'metric' ? value * 1000 : value * ML_PER_OZ
+    default:
+      return value
+  }
+}
+
+/** Unit label next to the form's number. */
+export function inputUnit(source: LinkSource, units: UnitSystem): string {
+  return { steps: 'steps', sleep: 'hours', water: units === 'metric' ? 'L' : 'oz', calories: '± kcal', protein: '', weighIn: '', workout: '' }[source]
+}

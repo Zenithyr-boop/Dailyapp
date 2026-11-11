@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect } from 'react'
-import { Link, useSearchParams } from 'react-router'
+import { Link } from 'react-router'
 import { DateSwitcher } from '../../components/DateSwitcher'
 import { EditIcon } from '../../components/icons'
 import { QuestRow } from '../../components/QuestRow'
@@ -15,13 +15,21 @@ import { useQuestDays } from './questDays'
 import { dismissCelebration, ensureDay, ensureSetup, getCelebration, setQuestDone, stepCount } from './questsRepo'
 import { StatusHeader } from './StatusHeader'
 import { ResumeBanner } from '../train/sessions/ResumeBanner'
+import { useOverlay } from '../../components/useOverlay'
+import { FoodTodayPanel, VolumePanel, WeightPanel } from '../today/DashboardPanels'
+import { StatDialog } from '../today/StatDialog'
+import { addWater, isStatKind } from '../today/statsRepo'
+import { TodayStrip } from '../today/TodayStrip'
+import { AutoQuestRow } from './AutoQuestRow'
+import { linkDataFor } from './autoQuests'
 
 /** A tick that lands after the day closed (the clock moved on) is simply dropped. */
 const ignoreLocked = (p: Promise<void>) => p.catch(() => {})
 
 export function QuestsPage() {
   const { today, msLeft } = useDayClock()
-  const [params] = useSearchParams()
+  const overlay = useOverlay()
+  const params = overlay.params
   const date = clampDay(params.get('date'), today)
   const isToday = date === today
   const editable = canEditQuests(date, today)
@@ -35,6 +43,11 @@ export function QuestsPage() {
   const qd = useQuestDays(today)
   const celebration = useLiveQuery(getCelebration, [])
   const todayRecord = qd?.byDate.get(today)
+  const goals = profile?.goals
+  // Live numbers for the strip and automatic quests (re-read whenever food, stats, workouts or goals change).
+  const linkData = useLiveQuery(() => linkDataFor(date, goals), [date, goals])
+  const statParam = params.get('stat')
+  const units = profile?.units ?? 'metric'
 
   if (!profile || !qd || !todayRecord) {
     return <p className="text-muted">Loading quests…</p>
@@ -59,6 +72,10 @@ export function QuestsPage() {
         totalToday={todayRecord.quests.length}
       />
 
+      <TodayStrip date={date} today={today} data={linkData} goals={profile.goals} onStat={(s) => overlay.open('stat', s)} />
+
+      <div className="space-y-6 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-6 lg:space-y-0 xl:grid-cols-[minmax(0,1fr)_25rem]">
+      <div className="space-y-6">
       <section aria-labelledby="quests-h" className="md:border md:border-panel-edge md:bg-panel md:px-6 md:pt-5 md:pb-3">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs text-muted">{longDayLabel(date)}</p>
@@ -106,7 +123,18 @@ export function QuestsPage() {
           <ul>
             {quests.map((q) => (
               <li key={q.id} className="border-b border-line-soft last:border-b-0">
-                {q.kind === 'count' ? (
+                {q.link ? (
+                  <AutoQuestRow
+                    quest={q}
+                    data={linkData}
+                    date={date}
+                    today={today}
+                    units={units}
+                    locked={!editable}
+                    onStat={(s) => overlay.open('stat', s)}
+                    onAddWater={(ml) => void addWater(date, ml)}
+                  />
+                ) : q.kind === 'count' ? (
                   <CountQuestRow quest={q} locked={!editable} onStep={(dir) => ignoreLocked(stepCount(date, q.id, dir))} />
                 ) : (
                   <QuestRow
@@ -132,6 +160,26 @@ export function QuestsPage() {
       </p>
 
       <HistoryPanel cells={buildHistory(recent, today, 30, qd.firstDate)} />
+      </div>
+
+      {/* Desktop dashboard: the week at a glance beside the quests. */}
+      <aside aria-label="At a glance" className="hidden space-y-4 lg:block">
+        <VolumePanel today={today} units={units} />
+        <FoodTodayPanel today={today} goals={profile.goals} />
+        <WeightPanel today={today} units={units} />
+      </aside>
+      </div>
+
+      {isStatKind(statParam) && (
+        <StatDialog
+          stat={statParam}
+          date={date}
+          today={today}
+          values={{ steps: linkData?.steps, sleepMinutes: linkData?.sleepMinutes, waterMl: linkData?.waterMl }}
+          units={units}
+          onClose={() => overlay.close('stat')}
+        />
+      )}
 
       {celebration && (
         <LevelUpDialog
