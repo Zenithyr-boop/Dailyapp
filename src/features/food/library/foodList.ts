@@ -1,8 +1,13 @@
 /**
  * The bundled whole-food list — editable by the coach.
  *
- * Each row: USDA FoodData Central id (SR Legacy), the name shown in the app,
- * and its group. `npm run import:foods` reads this list and rewrites
+ * Single foods. Each row: USDA FoodData Central id (SR Legacy or Foundation), the
+ * name shown in the app, and its group. Everyday dishes (FNDDS) are in `dishList.ts`.
+ *
+ * Raw vs cooked: name every meat, fish, grain, pasta, oat and bean with its state
+ * ("Chicken breast, raw" / "Chicken breast, cooked", "White rice, dry" / "…, cooked").
+ * Weighing raw and logging cooked (or the other way round) is the most common
+ * tracking mistake; `library.test.ts` checks the names. `npm run import:foods` reads this list and rewrites
  * `foods.json` with values per 100 g and common serving sizes from USDA.
  *
  * - Food ids in the app are `usda-<fdcId>`. Never change an id once shipped:
@@ -11,6 +16,8 @@
  *   them yourself, add the food to SERVING_OVERRIDES below (grams per serving).
  * - Data: USDA FoodData Central, public domain (credited on Me → About).
  */
+
+import { DISH_LIST } from './dishList.ts'
 
 export const FOOD_GROUPS = [
   'Meat & poultry',
@@ -26,22 +33,25 @@ export const FOOD_GROUPS = [
   'Sauces & sweet',
   'Drinks',
   'Snacks & treats',
+  'Meals & dishes',
+  'Sandwiches & burgers',
+  'Soups',
 ] as const
 
 export type FoodGroup = (typeof FOOD_GROUPS)[number]
 
 type Row = readonly [fdcId: number, name: string]
 
-const LIST: Record<FoodGroup, readonly Row[]> = {
+const LIST: Partial<Record<FoodGroup, readonly Row[]>> = {
   'Meat & poultry': [
     [171077, 'Chicken breast, raw'],
-    [171477, 'Chicken breast, roasted'],
+    [171477, 'Chicken breast, cooked'],
     [173627, 'Chicken thigh, skinless, raw'],
-    [172388, 'Chicken thigh, roasted'],
+    [172388, 'Chicken thigh, cooked'],
     [173614, 'Chicken drumstick, skinless, raw'],
-    [172376, 'Chicken drumstick, roasted'],
+    [172376, 'Chicken drumstick, cooked'],
     [172390, 'Chicken wings, raw'],
-    [173630, 'Chicken wings, roasted'],
+    [173630, 'Chicken wings, cooked'],
     [171116, 'Ground chicken, raw'],
     [171117, 'Ground chicken, cooked'],
     [171098, 'Turkey breast, raw'],
@@ -406,8 +416,9 @@ export interface FoodListEntry {
   group: FoodGroup
 }
 
-export const FOOD_LIST: readonly FoodListEntry[] = FOOD_GROUPS.flatMap((group) =>
-  LIST[group].map(([fdcId, name]) => ({ fdcId, name, group })),
+/** Single foods first, then the everyday dishes. */
+export const FOOD_LIST: readonly FoodListEntry[] = [LIST, DISH_LIST].flatMap((list) =>
+  FOOD_GROUPS.flatMap((group) => (list[group] ?? []).map(([fdcId, name]) => ({ fdcId, name, group }))),
 )
 
 /**
@@ -415,8 +426,8 @@ export const FOOD_LIST: readonly FoodListEntry[] = FOOD_GROUPS.flatMap((group) =
  * Label as shown in the app → grams in one serving.
  */
 export const SERVING_OVERRIDES: Readonly<Record<number, readonly (readonly [label: string, grams: number])[]>> = {
-  171077: [['1 breast', 174], ['1 fillet (small)', 120]],
-  171477: [['1 breast', 140], ['1 cup, diced', 140]],
+  171077: [['1 palm-sized piece', 115], ['1 breast', 174], ['1 fillet (small)', 120]],
+  171477: [['1 palm-sized piece', 85], ['1 breast', 140], ['1 cup, diced', 140]],
   173904: [['½ cup', 40], ['1 cup', 81]],
   173180: [['1 scoop', 30]],
   173177: [['1 scoop', 30]],
