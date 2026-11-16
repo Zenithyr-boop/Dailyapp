@@ -4,7 +4,7 @@
  * Deleting leaves a tombstone so the deletion reaches other devices.
  */
 import { db, type FoodEntry, type MealSlot, type Portion } from '../../lib/db'
-import { foodFromPortion, type Food } from './nutrition'
+import { foodFromPortion, MACROS, roundTotals, type Food } from './nutrition'
 
 export const newEntryId = () => crypto.randomUUID()
 
@@ -47,9 +47,14 @@ export function entriesFor(portions: readonly Portion[], date: string, meal: Mea
 }
 
 export async function logPortions(date: string, meal: MealSlot, portions: readonly Portion[]): Promise<number> {
+  return (await addPortions(date, meal, portions)).length
+}
+
+/** Log these portions; returns the new entries' ids, in order. */
+export async function addPortions(date: string, meal: MealSlot, portions: readonly Portion[]): Promise<string[]> {
   const entries = entriesFor(portions, date, meal)
   await db.food.bulkAdd(entries)
-  return entries.length
+  return entries.map((e) => e.id)
 }
 
 export async function logPortion(date: string, meal: MealSlot, portion: Portion): Promise<string> {
@@ -74,6 +79,26 @@ export async function updateEntry(id: string, portion: Portion, meal: MealSlot):
   const current = await db.food.get(id)
   if (!current || current.deleted) return
   await db.food.put({ ...portionOfEntry(portion), id, date: current.date, meal, loggedAt: current.loggedAt, updatedAt: Date.now() })
+}
+
+/**
+ * Set an entry's calories and macros by hand ("add macros" on a quick log). Macros
+ * left undefined stay missing. Entries from a food keep their amount; their copy of
+ * the food's values follows, so changing the amount later keeps these numbers.
+ */
+export async function setEntryValues(id: string, values: { kcal: number; proteinG?: number; carbsG?: number; fatG?: number }): Promise<void> {
+  const current = await db.food.get(id)
+  if (!current || current.deleted) return
+  const totals = roundTotals({ kcal: values.kcal, proteinG: values.proteinG ?? 0, carbsG: values.carbsG ?? 0, fatG: values.fatG ?? 0 })
+  const missing = MACROS.filter((m) => values[m] === undefined)
+  const next: FoodEntry = { ...current, ...totals, updatedAt: Date.now() }
+  if (missing.length) next.missing = missing
+  else delete next.missing
+  if (next.per100 && next.grams) {
+    const f = 100 / next.grams
+    next.per100 = { ...next.per100, kcal: totals.kcal * f, proteinG: totals.proteinG * f, carbsG: totals.carbsG * f, fatG: totals.fatG * f }
+  }
+  await db.food.put(next)
 }
 
 export async function deleteEntry(id: string): Promise<void> {

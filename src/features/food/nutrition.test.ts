@@ -63,7 +63,7 @@ describe('portions', () => {
   it('leaves quick adds alone', () => {
     const quick = { name: 'Quick add', kcal: 500, proteinG: 30, carbsG: 50, fatG: 20 }
     expect(withAmount(quick, { grams: 10 })).toBe(quick)
-    expect(describeAmount(quick)).toBe('Quick add')
+    expect(describeAmount(quick)).toBe('Quick log')
     expect(foodFromPortion(quick)).toBeUndefined()
   })
 

@@ -7,7 +7,7 @@
  * - meal names (profile `mealNames`).
  * Deletes are tombstones so they reach other devices.
  */
-import { db, type CustomFood, type FavoriteFood, type MealSlot, type Per100, type Portion, type SavedMeal, type Serving } from '../../lib/db'
+import { db, type CustomFood, type FavoriteFood, type MealSlot, type Nutrient, type Per100, type Portion, type SavedMeal, type Serving } from '../../lib/db'
 import { ensureSetup } from '../quests/questsRepo'
 import { logPortions, portionOfEntry } from './foodLogRepo'
 import { getUsdaFood } from './library/catalog'
@@ -23,6 +23,12 @@ export const MEAL_ITEMS_MAX = 40
 
 /** Upper limits for values per 100 g (pure fat is ~900 kcal). */
 export const PER100_MAX: Per100 = { kcal: 950, proteinG: 100, carbsG: 100, fatG: 100 }
+/** Upper limits for one serving of a food without a weight (its "per 100 g" values are per serving). */
+export const PER_SERVING_MAX: Per100 = { kcal: 10000, proteinG: 1000, carbsG: 1000, fatG: 1000 }
+
+/** The serving a food made from just a name and calories gets: no real weight. */
+export const NOMINAL_GRAMS = 100
+export const DEFAULT_SERVING_LABEL = '1 serving'
 
 export interface CustomFoodFields {
   name: string
@@ -31,25 +37,35 @@ export interface CustomFoodFields {
   per100: Per100
   servings: Serving[]
   basedOn?: string
+  missing?: Nutrient[]
 }
 
 const clamp = (v: number, max: number) => (Number.isFinite(v) ? Math.min(max, Math.max(0, Math.round(v * 100) / 100)) : 0)
 
 /** Clean user input: trimmed text, values in range, only complete servings. */
 export function normalizeCustomFood(f: CustomFoodFields): CustomFoodFields {
+  const servings: Serving[] = f.servings
+    .map((s): Serving => {
+      const label = s.label.trim().replace(/\s+/g, ' ').slice(0, SERVING_LABEL_MAX)
+      return s.nominal ? { label, grams: NOMINAL_GRAMS, nominal: true } : { label, grams: Math.round(s.grams * 10) / 10 }
+    })
+    .filter((s) => s.label && s.grams > 0 && s.grams <= 5000)
+    .slice(0, MAX_SERVINGS)
+  // A food without a weight has just that one serving, and its values are per serving.
+  const nominal = servings[0]?.nominal === true
+  const max = nominal ? PER_SERVING_MAX : PER100_MAX
   const out: CustomFoodFields = {
     name: f.name.trim().replace(/\s+/g, ' ').slice(0, FOOD_NAME_MAX) || 'Untitled food',
     per100: {
-      kcal: clamp(f.per100.kcal, PER100_MAX.kcal),
-      proteinG: clamp(f.per100.proteinG, PER100_MAX.proteinG),
-      carbsG: clamp(f.per100.carbsG, PER100_MAX.carbsG),
-      fatG: clamp(f.per100.fatG, PER100_MAX.fatG),
+      kcal: clamp(f.per100.kcal, max.kcal),
+      proteinG: clamp(f.per100.proteinG, max.proteinG),
+      carbsG: clamp(f.per100.carbsG, max.carbsG),
+      fatG: clamp(f.per100.fatG, max.fatG),
     },
-    servings: f.servings
-      .map((s) => ({ label: s.label.trim().replace(/\s+/g, ' ').slice(0, SERVING_LABEL_MAX), grams: Math.round(s.grams * 10) / 10 }))
-      .filter((s) => s.label && s.grams > 0 && s.grams <= 5000)
-      .slice(0, MAX_SERVINGS),
+    servings: nominal ? servings.slice(0, 1) : servings.filter((s) => !s.nominal),
   }
+  const missing = f.missing?.filter((n) => n !== 'kcal')
+  if (missing?.length) out.missing = [...new Set(missing)]
   const brand = f.brand?.trim().replace(/\s+/g, ' ').slice(0, BRAND_MAX)
   if (brand) out.brand = brand
   const barcode = f.barcode ? cleanBarcode(f.barcode) : undefined
@@ -64,7 +80,21 @@ export function customToFood(c: CustomFood): Food {
   if (c.brand) food.brand = c.brand
   if (c.barcode ?? c.basedOn) food.barcode = c.barcode ?? c.basedOn
   if (c.basedOn) food.basedOn = c.basedOn
+  if (c.missing?.length) food.missing = [...c.missing]
   return food
+}
+
+type MacroValues = { proteinG?: number; carbsG?: number; fatG?: number }
+const missingOf = (v: MacroValues): Nutrient[] => (['proteinG', 'carbsG', 'fatG'] as const).filter((m) => v[m] === undefined)
+
+/** "Save for next time" on a quick log: a food with one serving of these values and no weight. */
+export async function createQuickFood(q: { name: string; kcal: number; servingLabel?: string } & MacroValues): Promise<string> {
+  return createCustomFood({
+    name: q.name,
+    per100: { kcal: q.kcal, proteinG: q.proteinG ?? 0, carbsG: q.carbsG ?? 0, fatG: q.fatG ?? 0 },
+    servings: [{ label: q.servingLabel?.trim() || DEFAULT_SERVING_LABEL, grams: NOMINAL_GRAMS, nominal: true }],
+    missing: missingOf(q),
+  })
 }
 
 export async function listCustomFoods(): Promise<CustomFood[]> {
@@ -185,6 +215,20 @@ export async function getSavedMeal(id: string): Promise<SavedMeal | undefined> {
 
 function cleanMealName(name: string): string {
   return name.trim().replace(/\s+/g, ' ').slice(0, FOOD_NAME_MAX) || 'My meal'
+}
+
+/** A saved meal from just a name and its total calories (macros optional). */
+export async function createSimpleMeal(name: string, totals: { kcal: number } & MacroValues): Promise<string> {
+  const item: Portion = {
+    name: cleanMealName(name),
+    kcal: Math.round(Math.max(0, totals.kcal)),
+    proteinG: totals.proteinG ?? 0,
+    carbsG: totals.carbsG ?? 0,
+    fatG: totals.fatG ?? 0,
+  }
+  const missing = missingOf(totals)
+  if (missing.length) item.missing = missing
+  return createSavedMeal(name, [item])
 }
 
 export async function createSavedMeal(name: string, items: readonly Portion[]): Promise<string> {
