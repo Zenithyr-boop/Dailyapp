@@ -8,7 +8,7 @@ interface ComingSoonProps {
 /** Placeholder body for screens that aren't built yet. */
 export function ComingSoon({ items }: ComingSoonProps) {
   return (
-    <Panel title="Not built yet" aside="Planned">
+    <Panel title="Coming soon">
       <ul className="space-y-2.5">
         {items.map((item) => (
           <li key={item} className="flex gap-3 text-muted">

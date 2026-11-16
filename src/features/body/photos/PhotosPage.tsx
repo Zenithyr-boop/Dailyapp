@@ -1,4 +1,5 @@
 import { useId, useMemo, useState, type ChangeEvent } from 'react'
+import { ListSkeleton } from '../../../components/Skeleton'
 import { Link } from 'react-router'
 import { Button } from '../../../components/Button'
 import { Dialog } from '../../../components/Dialog'
@@ -73,11 +74,9 @@ export function PhotosPage() {
         </div>
 
         {!photos ? (
-          <p className="text-muted" role="status">
-            Loading photos…
-          </p>
+          <ListSkeleton label="Loading photos" />
         ) : photos.length === 0 ? (
-          <p className="border border-line p-6 text-center text-muted">No photos yet.</p>
+          <p className="border border-line p-6 text-center text-muted">No photos yet. Add one to start comparing later. Photos stay on this device.</p>
         ) : (
           byDate.map(([date, list]) => (
             <section key={date} aria-label={longDayLabel(date)} className="border border-panel-edge bg-panel">

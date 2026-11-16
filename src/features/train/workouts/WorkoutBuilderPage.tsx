@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { PanelSkeleton } from '../../../components/Skeleton'
 import { Link, useBlocker, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import { Button } from '../../../components/Button'
 import { Dialog } from '../../../components/Dialog'
@@ -165,9 +166,7 @@ export function WorkoutBuilderPage() {
     return (
       <>
         {backLink}
-        <p className="text-muted" role="status">
-          Loading workout…
-        </p>
+        <PanelSkeleton label="Loading workout" lines={4} />
       </>
     )
   }

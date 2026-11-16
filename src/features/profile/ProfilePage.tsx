@@ -1,7 +1,6 @@
 import { Link } from 'react-router'
 import { SECONDARY_NAV } from '../../app/nav'
 import { ChevronRightIcon } from '../../components/icons'
-import { ComingSoon } from '../../components/ComingSoon'
 import { PageHeader } from '../../components/PageHeader'
 import { Panel } from '../../components/Panel'
 import { AccountPanel } from './AccountPanel'
@@ -53,11 +52,6 @@ export function ProfilePage() {
             ))}
           </ul>
         </Panel>
-        <ComingSoon
-          items={[
-            'Profile, level and rank history',
-          ]}
-        />
         <Panel title="About">
           <p className="text-muted">
             FromZero is free, built by a personal trainer. The core app stays free forever.

@@ -1,4 +1,5 @@
 import { useState, type MouseEvent, type ReactNode } from 'react'
+import { PanelSkeleton } from '../../../components/Skeleton'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { Button } from '../../../components/Button'
 import { Dialog } from '../../../components/Dialog'
@@ -59,9 +60,7 @@ export function MovementDetailPage() {
     return (
       <>
         <BackToLibrary />
-        <p className="text-muted" role="status">
-          Loading…
-        </p>
+        <PanelSkeleton label="Loading movement" lines={4} />
       </>
     )
   }

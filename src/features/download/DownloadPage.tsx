@@ -138,7 +138,7 @@ export function DownloadPage() {
     </Panel>
   )
 
-  const order = device === 'ios' ? [ios, android, desktop] : device === 'desktop' ? [desktop, android, ios] : [android, ios, desktop]
+  const order = device === 'ios' ? [ios, android, desktop] : [android, ios, desktop]
 
   return (
     <main className="mx-auto w-full max-w-2xl px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[calc(2rem+env(safe-area-inset-bottom))]">

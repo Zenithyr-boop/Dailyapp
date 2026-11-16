@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { PageSkeleton } from '../../components/Skeleton'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { Button } from '../../components/Button'
@@ -25,7 +26,7 @@ export function ProgramsPage() {
   const qd = useQuestDays(today)
   const celebration = useLiveQuery(getProgramCelebration, [])
 
-  if (!programs || !qd) return <p className="text-muted">Loading programs…</p>
+  if (!programs || !qd) return <PageSkeleton label="Loading programs" />
 
   const active = programs.find((p) => p.status === 'active')
   const progress = active && evaluateProgram(active, (d) => qd.byDate.get(d), today)

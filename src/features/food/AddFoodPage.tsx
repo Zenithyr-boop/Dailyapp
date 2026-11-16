@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { ListSkeleton } from '../../components/Skeleton'
 import { useDeferredValue, useId, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { Button } from '../../components/Button'
@@ -199,9 +200,7 @@ export function AddFoodPage() {
               {error ? (
                 <p className="text-muted">Couldn’t load the food list. Check your connection and reload.</p>
               ) : !ready && local.length === 0 ? (
-                <p className="text-muted" role="status">
-                  Loading foods…
-                </p>
+                <ListSkeleton label="Loading foods" />
               ) : local.length ? (
                 <FoodResults results={local} unit={unit} onPick={(r) => void pick(r)} />
               ) : (
@@ -363,7 +362,7 @@ function Tabs({ tab, onTab, children }: { tab: Tab; onTab: (t: Tab) => void; chi
 type TabProps = { unit: 'g' | 'oz'; onPick: (r: FoodResult) => void }
 
 function ListOrEmpty({ results, empty, unit, onPick }: { results: FoodResult[] | undefined; empty: string } & TabProps) {
-  if (!results) return <p className="text-muted">Loading…</p>
+  if (!results) return <ListSkeleton />
   if (!results.length) return <p className="text-muted">{empty}</p>
   return <FoodResults results={results} unit={unit} onPick={onPick} />
 }

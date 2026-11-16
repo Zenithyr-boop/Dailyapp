@@ -83,7 +83,7 @@ export function WorkoutsSection({ date }: { date?: string }) {
               <ul>{rows.map((r) => row(r.workout, r.edited))}</ul>
             </section>
           ))}
-          {lists.programs.length === 0 && <p className="px-4 py-4 text-muted">All starter templates deleted.</p>}
+          {lists.programs.length === 0 && <p className="px-4 py-4 text-muted">All starter templates deleted. Build your own with New above.</p>}
           {lists.deletedStarters > 0 && (
             <div className="border-t border-line-soft px-4 py-3">
               <Button variant="secondary" className="w-full" onClick={() => restoreStarters()}>

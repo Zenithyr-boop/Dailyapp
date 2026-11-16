@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { PanelSkeleton } from '../../components/Skeleton'
 import { useId, useMemo, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router'
 import { Button } from '../../components/Button'
@@ -58,9 +59,7 @@ export function BodyPage() {
     <>
       <PageHeader title="Body" kicker={longDayLabel(today)} />
       {!days || !profile ? (
-        <p className="text-muted" role="status">
-          Loading…
-        </p>
+        <PanelSkeleton label="Loading body data" lines={5} />
       ) : (
         <div className="space-y-4">
           <WeighInPanel key={today} today={today} todayWeight={todayWeight} lastWeight={weights.at(-1)?.value} units={units} />
@@ -360,7 +359,7 @@ function WeighInList({
   return (
     <Panel title="Weigh-ins" aside={weights.length ? `${weights.length}` : undefined}>
       {weights.length === 0 ? (
-        <p className="text-muted">Nothing logged yet.</p>
+        <p className="text-muted">No weigh-ins yet. Log today’s weight above: the trend line and weekly rate appear after a few.</p>
       ) : (
         <ul className="-mx-4 -mt-4">
           {shown.map((p, i) => {

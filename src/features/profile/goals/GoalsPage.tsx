@@ -4,6 +4,7 @@
  * custom calories and macros. Edits stay in a draft until Save.
  */
 import { useEffect, useId, useState } from 'react'
+import { PanelSkeleton } from '../../../components/Skeleton'
 import { Link, useBlocker } from 'react-router'
 import { Button } from '../../../components/Button'
 import { Dialog } from '../../../components/Dialog'
@@ -60,7 +61,7 @@ export function GoalsPage() {
     return (
       <>
         <Header />
-        <p className="text-muted">Loading…</p>
+        <PanelSkeleton label="Loading goals" lines={5} />
       </>
     )
   }

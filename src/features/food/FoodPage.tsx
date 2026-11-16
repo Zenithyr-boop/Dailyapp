@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { PanelSkeleton } from '../../components/Skeleton'
 import { useId, useState } from 'react'
 import { Link } from 'react-router'
 import { Button } from '../../components/Button'
@@ -74,9 +75,7 @@ export function FoodPage() {
       </header>
 
       {!entries || !profile ? (
-        <p className="text-muted" role="status">
-          Loading food…
-        </p>
+        <PanelSkeleton label="Loading food" lines={5} />
       ) : (
         <div className="space-y-4">
           <QuickLogBox

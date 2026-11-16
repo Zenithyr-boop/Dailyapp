@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { PageSkeleton } from '../../../components/Skeleton'
 import { useMemo, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
 import { Button } from '../../../components/Button'
@@ -40,7 +41,7 @@ export function SessionSummaryPage() {
   const justFinished = params.get('done') === '1'
   const train = params.get('train') as TrainQuestResult | null
 
-  if (session === undefined || !all) return <p className="text-muted">Loading session…</p>
+  if (session === undefined || !all) return <PageSkeleton label="Loading session" />
   if (session === null) {
     return (
       <>

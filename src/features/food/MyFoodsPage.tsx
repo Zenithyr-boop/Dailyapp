@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { ListSkeleton } from '../../components/Skeleton'
 import { Link } from 'react-router'
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from '../../components/icons'
 import { PageHeader } from '../../components/PageHeader'
@@ -41,7 +42,7 @@ export function MyFoodsPage() {
       />
       <Panel title="Your foods" aside={foods ? String(foods.length) : undefined}>
         {!foods ? (
-          <p className="text-muted">Loading…</p>
+          <ListSkeleton label="Loading your foods" />
         ) : foods.length ? (
           <ul className="-mx-4 -my-4">
             {foods.map((f) => (

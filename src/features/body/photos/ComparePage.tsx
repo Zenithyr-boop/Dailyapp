@@ -1,4 +1,5 @@
 import { useId, useMemo } from 'react'
+import { PageSkeleton } from '../../../components/Skeleton'
 import { useSearchParams } from 'react-router'
 import { Button } from '../../../components/Button'
 import { SwapIcon } from '../../../components/icons'
@@ -56,9 +57,7 @@ export function ComparePage() {
 
   if (!photos || !days || !profile) {
     return (
-      <p className="text-muted" role="status">
-        Loading…
-      </p>
+      <PageSkeleton label="Loading photos" />
     )
   }
 
