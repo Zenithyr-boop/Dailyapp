@@ -1,0 +1,44 @@
+name: Feedback
+description: A bug, an idea or anything else about FromZero.
+title: "[Feedback] "
+labels: ["feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping make FromZero better. Issues are **public**: don't include your email,
+        health details or anything private. For private questions, email fromzero1245@gmail.com.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What is it?
+      options:
+        - Something isn't working
+        - An idea or request
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: What happened, or what would you like?
+      description: For a bug, what you did, what you expected and what happened instead.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: Filled in by the app (Me → About).
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Where do you use FromZero?
+      options:
+        - Website / home-screen app
+        - Android app
+  - type: input
+    id: device
+    attributes:
+      label: Phone or browser (optional)
+      placeholder: e.g. Pixel 8, iPhone 15 Safari, Chrome on Windows

@@ -8,7 +8,7 @@
  * Keep it true: update it whenever the app starts collecting or sending anything new.
  */
 
-export const POLICY_UPDATED = '11 November 2026'
+export const POLICY_UPDATED = '16 November 2026'
 
 /** Where people can ask questions about the app and their data. */
 export const CONTACT_EMAIL = 'fromzero1245@gmail.com'
@@ -21,8 +21,9 @@ export interface PolicySection {
 }
 
 export const POLICY_INTRO =
-  'FromZero is a free fitness and discipline tracker made by a personal trainer. This policy explains what the app ' +
-  'stores, where it goes and what it never does. It covers the website, the installable web app and the Android app.'
+  'FromZero is a free fitness and discipline tracker made by a personal trainer. This page explains, in plain words, ' +
+  'what the app stores, where it goes and what it never does. It covers the website, the installable web app and the ' +
+  'Android app.'
 
 export const POLICY_SECTIONS: PolicySection[] = [
   {
@@ -31,9 +32,10 @@ export const POLICY_SECTIONS: PolicySection[] = [
     bullets: [
       'Everything you log stays on your device unless you sign in.',
       'If you sign in, your data is copied to your own account so it syncs between your devices. Only you can read it.',
-      'No ads, no analytics or tracking, and your data is never sold or shared.',
+      'Progress photos never leave the device they were taken on. They are never uploaded.',
+      'No ads, no analytics, no tracking. Your data is never sold, rented or shared.',
       'Health Connect data is only read, only for your daily stats and quests, and never shared with anyone.',
-      'Progress photos never leave the device they were taken on.',
+      'You can download all of your data, and delete it, at any time from the Me screen.',
     ],
   },
   {
@@ -41,7 +43,8 @@ export const POLICY_SECTIONS: PolicySection[] = [
     paragraphs: [
       'Your quests, workouts, food log, body weight and measurements, steps, sleep, water, programs and settings are ' +
         'stored in the app’s own storage on your device. The app works fully without an account.',
-      'Progress photos are stored only on the device they were taken on. They are never uploaded and do not sync.',
+      'Progress photos are stored only on the device they were taken on. They are never uploaded, never synced and ' +
+        'not included in exports.',
     ],
   },
   {
@@ -49,9 +52,9 @@ export const POLICY_SECTIONS: PolicySection[] = [
     paragraphs: [
       'If you sign in with Google or with an email and password, FromZero uses Google Firebase (Firebase Authentication ' +
         'and Cloud Firestore) to copy your data to your account and keep your devices in step. Security rules make sure ' +
-        'only you can read or change your data.',
+        'only you can read or change your data. Nobody else, including other FromZero users, can see it.',
       'Firebase receives your email address, your name if you sign in with Google, and the data you log in the app ' +
-        '(not your progress photos).',
+        '(not your progress photos). Your cloud copy is kept until you delete your account.',
     ],
   },
   {
@@ -82,16 +85,32 @@ export const POLICY_SECTIONS: PolicySection[] = [
     bullets: [
       'Open Food Facts: when you scan a barcode or search for a packaged food, the barcode number or your search words ' +
         'are sent to look up the product. Nothing that identifies you is sent.',
-      'GitHub: exercise photos are loaded from GitHub when you open a movement, and the Android app checks GitHub ' +
-        'Releases for a newer version. No personal data is sent.',
+      'GitHub: exercise photos load from GitHub when you open a movement; the Download page and the Android app check ' +
+        'GitHub Releases for the newest version, and the Android app downloads from there. No FromZero data is sent.',
+      'Send feedback (Me → About) opens a new issue on GitHub. Issues are public and show your GitHub name, so don’t ' +
+        'put anything private in them; email us instead.',
       'Google Fonts and Firebase Hosting serve the website’s fonts and files, like any website.',
     ],
   },
   {
-    heading: 'Deleting your data',
+    heading: 'Download your data',
     paragraphs: [
-      'Me → Account lets you remove the data from a device and delete your account, which deletes your cloud data. ' +
-        'Uninstalling the Android app or clearing the site’s data removes everything stored on that device.',
+      'Me → Your data → Export JSON saves everything you’ve logged in one file, which Import JSON can read back on ' +
+        'any device. Export CSV saves your days, quests, food log and workout sets as spreadsheet files. Neither ' +
+        'includes progress photos.',
+    ],
+  },
+  {
+    heading: 'Deleting your data',
+    paragraphs: [],
+    bullets: [
+      'Signed in: Me → Account → Delete my account, then type DELETE. Your account and its cloud copy are deleted ' +
+        'straight away. You can also choose to remove the data from the device you’re using.',
+      'Not signed in: Me → Your data → Erase everything on this device, then type ERASE.',
+      'Uninstalling the Android app, or clearing this website’s data in your browser, also removes everything stored ' +
+        'on that device, including progress photos.',
+      `Can’t get into your account? Email ${CONTACT_EMAIL} from the address you signed up with and we’ll delete it ` +
+        'for you.',
     ],
   },
   {

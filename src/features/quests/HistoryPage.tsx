@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { PanelSkeleton } from '../../components/Skeleton'
 import { Link, useSearchParams } from 'react-router'
 import { Button } from '../../components/Button'
 import { Dialog } from '../../components/Dialog'
@@ -55,7 +56,7 @@ export function HistoryPage() {
       </Link>
       <PageHeader title="Day history" kicker="Quests done per day" />
       {!qd || !profile ? (
-        <p className="text-muted">Loading history…</p>
+        <PanelSkeleton label="Loading history" lines={6} />
       ) : (
         <div className="space-y-4 md:max-w-xl">
           <Panel>

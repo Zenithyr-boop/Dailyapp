@@ -5,7 +5,9 @@ import { BUILD_INFO, buildLine, platformLabel } from '../../lib/buildInfo'
 import { forceRefresh } from '../../lib/forceRefresh'
 import { isAndroidApp, isNativeApp } from '../../lib/platform'
 import { syncNow } from '../../lib/sync/engine'
-import { checkForUpdate, RELEASES_PAGE, type UpdateInfo } from '../../lib/updates'
+import { checkForUpdate, type UpdateInfo } from '../../lib/updates'
+import { feedbackUrl } from '../../lib/feedback'
+import { CONTACT_EMAIL } from '../legal/privacyPolicy'
 import { applyWebUpdate, checkWebUpdate, getWebUpdate, subscribeWebUpdate } from '../../lib/webUpdates'
 import { timeAgo, useNow, useSyncStatus } from './useSyncStatus'
 
@@ -20,23 +22,40 @@ export function AboutVersion() {
   return (
     <div className="mt-3 space-y-3">
       {/* Not uppercase: the commit hash is case-sensitive. */}
-      <p className="font-semibold text-text tabular-nums">
-        {buildLine(BUILD_INFO, platformLabel())}
+      <div className="flex flex-wrap items-center gap-x-4">
+        <p className="font-semibold text-text tabular-nums">{buildLine(BUILD_INFO, platformLabel())}</p>
+        <a
+          href={feedbackUrl()}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex min-h-touch items-center font-display font-bold uppercase tracking-wider text-accent hover:text-text"
+        >
+          Send feedback
+        </a>
+      </div>
+      <p className="text-sm text-muted">
+        Feedback opens a public GitHub issue (needs a free GitHub account). Rather email?{' '}
+        <a href={`mailto:${CONTACT_EMAIL}`} className={linkClass}>
+          {CONTACT_EMAIL}
+        </a>
       </p>
       <SyncLine />
       {android ? <ApkUpdateCheck /> : isNativeApp() ? null : <WebUpdateCheck />}
       {!android && (
         <p className="text-muted">
           On Android?{' '}
-          <a href={RELEASES_PAGE} target="_blank" rel="noreferrer" className={linkClass}>
+          <Link to="/download" className={linkClass}>
             Get the app
-          </a>{' '}
+          </Link>{' '}
           for steps and sleep from Health Connect.
         </p>
       )}
-      <p>
-        <Link to="/privacy" className={linkClass}>
+      <p className="flex flex-wrap gap-x-4">
+        <Link to="/privacy" className={`inline-flex min-h-touch items-center ${linkClass}`}>
           Privacy policy
+        </Link>
+        <Link to="/download" className={`inline-flex min-h-touch items-center ${linkClass}`}>
+          Download and install
         </Link>
       </p>
     </div>

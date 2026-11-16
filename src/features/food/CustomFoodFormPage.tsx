@@ -1,4 +1,5 @@
 import { useEffect, useId, useState, type FormEvent } from 'react'
+import { PageSkeleton } from '../../components/Skeleton'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { Button } from '../../components/Button'
 import { Dialog } from '../../components/Dialog'
@@ -150,7 +151,7 @@ export function CustomFoodFormPage() {
       </>
     )
   }
-  if (!draft) return <p className="text-muted">Loading…</p>
+  if (!draft) return <PageSkeleton label="Loading food" />
 
   const set = (changes: Partial<Draft>) => setDraft({ ...draft, ...changes })
   const setValue = (n: Nutrient, v: number | undefined) => setDraft({ ...draft, values: { ...draft.values, [n]: v } })

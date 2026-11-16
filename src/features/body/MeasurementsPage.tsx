@@ -1,4 +1,5 @@
 import { useId, useMemo, useState, type FormEvent } from 'react'
+import { PageSkeleton } from '../../components/Skeleton'
 import { useSearchParams } from 'react-router'
 import { Button } from '../../components/Button'
 import { DateSwitcher } from '../../components/DateSwitcher'
@@ -44,9 +45,7 @@ export function MeasurementsPage() {
 
   if (!days || !profile) {
     return (
-      <p className="text-muted" role="status">
-        Loading…
-      </p>
+      <PageSkeleton label="Loading measurements" />
     )
   }
   const unit = lengthUnitOf(profile)

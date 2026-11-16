@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { PageSkeleton } from '../../../components/Skeleton'
 import { useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { Button } from '../../../components/Button'
@@ -71,7 +72,7 @@ export function SessionPage() {
   const picker = params.get('add') === '1' ? 'add' : params.get('swap')
 
   if (session === undefined || !history) {
-    return <p className="text-muted">Loading session…</p>
+    return <PageSkeleton label="Loading session" />
   }
 
   if (session === null) {

@@ -5,17 +5,34 @@
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#0B0E14" />
-    <meta name="description" content="Free fitness & discipline tracker" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #0b0e14;
+      }
+    </style>
+    <meta name="description" content="FromZero: a free fitness and discipline tracker. Workouts, food and macros, body weight, steps, sleep and daily quests. No ads, works offline." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600&display=swap"
-    />
+    <!-- Fonts load without blocking the first paint (display=swap shows the fallback first). -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600&display=swap" /></noscript>
     <title>FromZero</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Splash until React renders (replaced on the first render): paints at once, even on slow phones. -->
+      <div style="min-height: 100dvh; display: grid; place-items: center" role="status" aria-label="Loading FromZero">
+        <svg width="96" height="96" viewBox="0 0 1024 1024" aria-hidden="true">
+          <rect x="112" y="112" width="800" height="800" fill="#121722" stroke="#4DA3FF" stroke-width="24" />
+          <g fill="none" stroke="#4DA3FF" stroke-width="64" stroke-linecap="square">
+            <path d="M300 692V332H468M300 508H436" />
+            <path d="M556 332H724L556 692H724" />
+          </g>
+        </svg>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

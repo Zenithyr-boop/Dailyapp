@@ -1,7 +1,6 @@
 import type { ComponentType, SVGProps } from 'react'
 import {
   BodyIcon,
-  CommunityIcon,
   FoodIcon,
   MeIcon,
   ProgramsIcon,
@@ -28,5 +27,5 @@ export const PRIMARY_NAV: NavItem[] = [
 export const SECONDARY_NAV: NavItem[] = [
   // Squad comes back after the MVP (its page is still at /squad).
   { to: '/programs', label: 'Programs', Icon: ProgramsIcon },
-  { to: '/community', label: 'Community', Icon: CommunityIcon },
+  // Community comes back once sharing is built (its page is still at /community).
 ]

@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { ListSkeleton, PageSkeleton } from '../../components/Skeleton'
 import { useEffect, useId, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { Button } from '../../components/Button'
@@ -39,7 +40,7 @@ export function SavedMealsPage() {
       <NewSimpleMeal />
       <Panel title="Your meals" aside={meals ? String(meals.length) : undefined}>
         {!meals ? (
-          <p className="text-muted">Loading…</p>
+          <ListSkeleton label="Loading meals" />
         ) : meals.length ? (
           <ul className="-mx-4 -my-4">
             {meals.map((m) => {
@@ -60,7 +61,7 @@ export function SavedMealsPage() {
             })}
           </ul>
         ) : (
-          <p className="text-muted">No saved meals yet.</p>
+          <p className="text-muted">No saved meals yet. Log a meal on the Food tab, then use its ⋯ menu → Save as a meal to log it again in one tap.</p>
         )}
       </Panel>
     </>
@@ -179,7 +180,7 @@ export function SavedMealPage() {
       </>
     )
   }
-  if (!draft) return <p className="text-muted">Loading…</p>
+  if (!draft) return <PageSkeleton label="Loading meal" />
 
   const totals = sumTotals(draft.items.map((i) => i.portion))
 

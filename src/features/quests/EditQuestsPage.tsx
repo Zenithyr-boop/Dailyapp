@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { ListSkeleton } from '../../components/Skeleton'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { Button } from '../../components/Button'
@@ -54,7 +55,7 @@ export function EditQuestsPage() {
       <div className="space-y-4">
         <Panel title="Your quests" aside={quests ? `${quests.length} quests` : undefined}>
           {!quests ? (
-            <p className="text-muted">Loading…</p>
+            <ListSkeleton label="Loading quests" />
           ) : quests.length === 0 ? (
             <p className="text-muted">No quests yet. Add one below.</p>
           ) : (

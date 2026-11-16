@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { ListSkeleton } from '../../../components/Skeleton'
 import { Link } from 'react-router'
 import { Button } from '../../../components/Button'
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from '../../../components/icons'
@@ -63,9 +64,7 @@ export function MovementLibraryPage() {
           </Panel>
         ) : !results ? (
           <Panel title="Movements">
-            <p className="text-muted" role="status">
-              Loading movements…
-            </p>
+            <ListSkeleton label="Loading movements" lines={6} />
           </Panel>
         ) : browsing ? (
           <BrowseSections movements={results} />

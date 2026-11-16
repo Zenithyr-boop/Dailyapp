@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { PageSkeleton } from '../../components/Skeleton'
 import { useEffect } from 'react'
 import { Link } from 'react-router'
 import { DateSwitcher } from '../../components/DateSwitcher'
@@ -55,7 +56,7 @@ export function QuestsPage() {
   const units = profile?.units ?? 'metric'
 
   if (!profile || !qd || !todayRecord) {
-    return <p className="text-muted">Loading quests…</p>
+    return <PageSkeleton label="Loading quests" />
   }
 
   // XP, level and streak are worked out from the full history.

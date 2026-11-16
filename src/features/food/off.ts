@@ -16,9 +16,11 @@
  */
 import { db, type FoodSnapshot, type Nutrient, type Per100, type Serving } from '../../lib/db'
 import { NUTRIENTS, snapshotOf, type Food } from './nutrition'
+import { BUILD_INFO } from '../../lib/buildInfo'
+import { SITE_URL } from '../../lib/site'
 
 export const OFF_PREFIX = 'off-'
-export const OFF_USER_AGENT = 'FromZero/0.1.0 (https://fromzero-ce670.web.app)'
+export const OFF_USER_AGENT = `FromZero/${BUILD_INFO.version} (${SITE_URL})`
 
 const PRODUCTION = 'https://world.openfoodfacts.org'
 const STAGING = 'https://world.openfoodfacts.net'

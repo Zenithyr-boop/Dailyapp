@@ -1,41 +1,29 @@
-import { createBrowserRouter, Navigate } from 'react-router'
+import type { ComponentType } from 'react'
+import { createBrowserRouter, Navigate, type LazyRouteFunction, type RouteObject } from 'react-router'
 import { AppLayout } from './AppLayout'
-import { NotFoundPage } from './NotFoundPage'
+import { RouteError } from './RouteError'
 import { QuestsPage } from '../features/quests/QuestsPage'
-import { EditQuestsPage } from '../features/quests/EditQuestsPage'
-import { HistoryPage } from '../features/quests/HistoryPage'
-import { TrainPage } from '../features/train/TrainPage'
-import { MovementLibraryPage } from '../features/train/library/MovementLibraryPage'
-import { MovementDetailPage } from '../features/train/library/MovementDetailPage'
-import { MovementFormPage } from '../features/train/library/MovementFormPage'
-import { WorkoutBuilderPage } from '../features/train/workouts/WorkoutBuilderPage'
-import { SessionPage } from '../features/train/sessions/SessionPage'
-import { SessionSummaryPage } from '../features/train/sessions/SessionSummaryPage'
-import { FoodPage } from '../features/food/FoodPage'
-import { AddFoodPage } from '../features/food/AddFoodPage'
-import { CustomFoodFormPage } from '../features/food/CustomFoodFormPage'
-import { MyFoodsPage } from '../features/food/MyFoodsPage'
-import { SavedMealPage, SavedMealsPage } from '../features/food/SavedMealsPage'
-import { SquadPage } from '../features/squad/SquadPage'
-import { ProfilePage } from '../features/profile/ProfilePage'
-import { GoalsPage } from '../features/profile/goals/GoalsPage'
 import { OnboardingGate } from '../features/onboarding/OnboardingGate'
+// Eager too: a first visit lands here, and it's small.
 import { OnboardingPage } from '../features/onboarding/OnboardingPage'
-import { BodyPage } from '../features/body/BodyPage'
-import { MeasurementsPage } from '../features/body/MeasurementsPage'
-import { PhotosPage } from '../features/body/photos/PhotosPage'
-import { ComparePage } from '../features/body/photos/ComparePage'
-import { ProgramsPage } from '../features/programs/ProgramsPage'
-import { ProgramBuilderPage } from '../features/programs/ProgramBuilderPage'
-import { CommunityPage } from '../features/community/CommunityPage'
-import { PrivacyPage } from '../features/legal/PrivacyPage'
-import { HealthPage } from '../features/profile/health/HealthPage'
+
+/**
+ * Every screen except Quests (the one most opens land on) loads on demand, in its own
+ * chunk, so the first screen only downloads what it needs. The service worker precaches
+ * every chunk, so the app still works offline; the APK carries them all.
+ * A chunk that's gone after a deploy shows "FromZero was updated · Reload" (RouteError).
+ */
+function page<M extends Record<string, unknown>>(load: () => Promise<M>, name: keyof M & string): LazyRouteFunction<RouteObject> {
+  return async () => ({ Component: (await load())[name] as ComponentType })
+}
 
 export const router = createBrowserRouter([
   // First-run flow: full screen, outside the app shell.
-  { path: '/welcome', element: <OnboardingPage /> },
+  { path: '/welcome', element: <OnboardingPage />, errorElement: <RouteError /> },
   // Readable by anyone, before setup too (Health Connect links here).
-  { path: '/privacy', element: <PrivacyPage /> },
+  { path: '/privacy', lazy: page(() => import('../features/legal/PrivacyPage'), 'PrivacyPage'), errorElement: <RouteError /> },
+  // Shareable with people who don't have the app yet.
+  { path: '/download', lazy: page(() => import('../features/download/DownloadPage'), 'DownloadPage'), errorElement: <RouteError /> },
   {
     path: '/',
     element: (
@@ -43,40 +31,47 @@ export const router = createBrowserRouter([
         <AppLayout />
       </OnboardingGate>
     ),
+    errorElement: <RouteError />,
     children: [
-      { index: true, element: <Navigate to="/quests" replace /> },
-      // Wide: the desktop dashboard (quests + panels) uses more of the screen.
-      { path: 'quests', element: <QuestsPage />, handle: { wide: true } },
-      { path: 'quests/edit', element: <EditQuestsPage /> },
-      { path: 'quests/history', element: <HistoryPage /> },
-      { path: 'train', element: <TrainPage /> },
-      { path: 'train/movements', element: <MovementLibraryPage /> },
-      { path: 'train/movements/new', element: <MovementFormPage /> },
-      { path: 'train/movements/:id', element: <MovementDetailPage /> },
-      { path: 'train/movements/:id/edit', element: <MovementFormPage /> },
-      { path: 'train/workouts/new', element: <WorkoutBuilderPage /> },
-      { path: 'train/workouts/:id', element: <WorkoutBuilderPage /> },
-      { path: 'train/session', element: <SessionPage /> },
-      { path: 'train/sessions/:id', element: <SessionSummaryPage /> },
-      { path: 'food', element: <FoodPage /> },
-      { path: 'food/add', element: <AddFoodPage /> },
-      { path: 'food/foods', element: <MyFoodsPage /> },
-      { path: 'food/foods/new', element: <CustomFoodFormPage /> },
-      { path: 'food/foods/:id/edit', element: <CustomFoodFormPage /> },
-      { path: 'food/meals', element: <SavedMealsPage /> },
-      { path: 'food/meals/:id', element: <SavedMealPage /> },
-      { path: 'squad', element: <SquadPage /> },
-      { path: 'me', element: <ProfilePage /> },
-      { path: 'me/goals', element: <GoalsPage /> },
-      { path: 'me/health', element: <HealthPage /> },
-      { path: 'body', element: <BodyPage /> },
-      { path: 'body/measurements', element: <MeasurementsPage /> },
-      { path: 'body/photos', element: <PhotosPage /> },
-      { path: 'body/photos/compare', element: <ComparePage /> },
-      { path: 'programs', element: <ProgramsPage /> },
-      { path: 'programs/new/:template', element: <ProgramBuilderPage /> },
-      { path: 'community', element: <CommunityPage /> },
-      { path: '*', element: <NotFoundPage /> },
+      {
+        // A crashing page shows the error inside the shell, so the tabs still work.
+        errorElement: <RouteError inShell />,
+        children: [
+          { index: true, element: <Navigate to="/quests" replace /> },
+          // Wide: the desktop dashboard (quests + panels) uses more of the screen.
+          { path: 'quests', element: <QuestsPage />, handle: { wide: true } },
+          { path: 'quests/edit', lazy: page(() => import('../features/quests/EditQuestsPage'), 'EditQuestsPage') },
+          { path: 'quests/history', lazy: page(() => import('../features/quests/HistoryPage'), 'HistoryPage') },
+          { path: 'train', lazy: page(() => import('../features/train/TrainPage'), 'TrainPage') },
+          { path: 'train/movements', lazy: page(() => import('../features/train/library/MovementLibraryPage'), 'MovementLibraryPage') },
+          { path: 'train/movements/new', lazy: page(() => import('../features/train/library/MovementFormPage'), 'MovementFormPage') },
+          { path: 'train/movements/:id', lazy: page(() => import('../features/train/library/MovementDetailPage'), 'MovementDetailPage') },
+          { path: 'train/movements/:id/edit', lazy: page(() => import('../features/train/library/MovementFormPage'), 'MovementFormPage') },
+          { path: 'train/workouts/new', lazy: page(() => import('../features/train/workouts/WorkoutBuilderPage'), 'WorkoutBuilderPage') },
+          { path: 'train/workouts/:id', lazy: page(() => import('../features/train/workouts/WorkoutBuilderPage'), 'WorkoutBuilderPage') },
+          { path: 'train/session', lazy: page(() => import('../features/train/sessions/SessionPage'), 'SessionPage') },
+          { path: 'train/sessions/:id', lazy: page(() => import('../features/train/sessions/SessionSummaryPage'), 'SessionSummaryPage') },
+          { path: 'food', lazy: page(() => import('../features/food/FoodPage'), 'FoodPage') },
+          { path: 'food/add', lazy: page(() => import('../features/food/AddFoodPage'), 'AddFoodPage') },
+          { path: 'food/foods', lazy: page(() => import('../features/food/MyFoodsPage'), 'MyFoodsPage') },
+          { path: 'food/foods/new', lazy: page(() => import('../features/food/CustomFoodFormPage'), 'CustomFoodFormPage') },
+          { path: 'food/foods/:id/edit', lazy: page(() => import('../features/food/CustomFoodFormPage'), 'CustomFoodFormPage') },
+          { path: 'food/meals', lazy: page(() => import('../features/food/SavedMealsPage'), 'SavedMealsPage') },
+          { path: 'food/meals/:id', lazy: page(() => import('../features/food/SavedMealsPage'), 'SavedMealPage') },
+          { path: 'squad', lazy: page(() => import('../features/squad/SquadPage'), 'SquadPage') },
+          { path: 'me', lazy: page(() => import('../features/profile/ProfilePage'), 'ProfilePage') },
+          { path: 'me/goals', lazy: page(() => import('../features/profile/goals/GoalsPage'), 'GoalsPage') },
+          { path: 'me/health', lazy: page(() => import('../features/profile/health/HealthPage'), 'HealthPage') },
+          { path: 'body', lazy: page(() => import('../features/body/BodyPage'), 'BodyPage') },
+          { path: 'body/measurements', lazy: page(() => import('../features/body/MeasurementsPage'), 'MeasurementsPage') },
+          { path: 'body/photos', lazy: page(() => import('../features/body/photos/PhotosPage'), 'PhotosPage') },
+          { path: 'body/photos/compare', lazy: page(() => import('../features/body/photos/ComparePage'), 'ComparePage') },
+          { path: 'programs', lazy: page(() => import('../features/programs/ProgramsPage'), 'ProgramsPage') },
+          { path: 'programs/new/:template', lazy: page(() => import('../features/programs/ProgramBuilderPage'), 'ProgramBuilderPage') },
+          { path: 'community', lazy: page(() => import('../features/community/CommunityPage'), 'CommunityPage') },
+          { path: '*', lazy: page(() => import('./NotFoundPage'), 'NotFoundPage') },
+        ],
+      },
     ],
   },
 ])
