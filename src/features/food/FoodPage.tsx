@@ -7,28 +7,22 @@ import { Dialog } from '../../components/Dialog'
 import { ChevronRightIcon, CopyIcon, MoreIcon, PlusIcon } from '../../components/icons'
 import { Panel } from '../../components/Panel'
 import { addDays } from '../../lib/day'
-import type { FoodEntry, MealSlot, Portion, Profile } from '../../lib/db'
+import type { FoodEntry, MealSlot, Profile } from '../../lib/db'
 import { inputClass } from '../train/workouts/fields'
 import { useUnits } from '../profile/units'
-import { copyDay, copyMeal, deleteEntry, entriesForDay, getEntry, updateEntry } from './foodLogRepo'
-import { createSavedMeal, FOOD_NAME_MAX, getFood, setMealName } from './foodsRepo'
-import {
-  describeAmount,
-  foodFromPortion,
-  formatKcal,
-  MEAL_NAME_MAX,
-  MEAL_SLOTS,
-  mealName,
-  sumTotals,
-  type Food,
-} from './nutrition'
+import { copyDay, copyMeal, entriesForDay } from './foodLogRepo'
+import { createSavedMeal, FOOD_NAME_MAX, setMealName } from './foodsRepo'
+import { undoLogged, type Logged } from './logActions'
+import { describeAmount, formatKcal, lacksMacros, macroGaps, MEAL_NAME_MAX, MEAL_SLOTS, mealForTime, mealName, sumTotals } from './nutrition'
+import { EditEntryDialog } from './ui/EditEntryDialog'
 import { longDayLabel, useDayEntries, useFoodParams, useProfile } from './ui/hooks'
-import { PortionDialog } from './ui/PortionDialog'
+import { LoggedBar } from './ui/LoggedBar'
+import { QuickLogBox } from './ui/QuickLogBox'
 import { DayTotals, MacroLine } from './ui/TotalsBars'
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 
-/** The Food tab: a day's totals against the targets, and its four meals. */
+/** The Food tab: the quick log box, the day's totals against the targets, and its four meals. */
 export function FoodPage() {
   const { params, setParams, date, today } = useFoodParams()
   const profile = useProfile()
@@ -41,12 +35,25 @@ export function FoodPage() {
   const setStatus = (text: string) => setMessage({ date, text })
   const [menu, setMenu] = useState<MealSlot>()
   const entryId = params.get('entry')
+  // The meal quick log uses: picked by the time of day, one tap to change.
+  const [mealPick, setMealPick] = useState<MealSlot>()
+  const logMeal = mealPick ?? mealForTime()
+  const [logged, setLogged] = useState<{ item: Logged; undone?: boolean }>()
+  const loggedHere = logged?.item.date === date ? logged : undefined
 
-  function openEntry(id?: string) {
+  function openEntry(id?: string, macros = false) {
     const p = new URLSearchParams(params)
+    p.delete('macros')
     if (id) p.set('entry', id)
     else p.delete('entry')
+    if (id && macros) p.set('macros', '1')
     setParams(p, { replace: !id })
+  }
+
+  async function undo() {
+    if (!logged) return
+    await undoLogged(logged.item)
+    setLogged({ ...logged, undone: true })
   }
 
   async function copyYesterday() {
@@ -62,7 +69,7 @@ export function FoodPage() {
         <p className="label mb-1">{longDayLabel(date)}</p>
         <div className="flex items-end justify-between gap-3">
           <h1 className="text-4xl font-extrabold leading-none">Food</h1>
-          <DateSwitcher date={date} today={today} clear={['entry']} />
+          <DateSwitcher date={date} today={today} clear={['entry', 'macros']} />
         </div>
       </header>
 
@@ -72,7 +79,25 @@ export function FoodPage() {
         </p>
       ) : (
         <div className="space-y-4">
-          <DayTotals totals={sumTotals(entries)} goals={profile.goals} />
+          <QuickLogBox
+            date={date}
+            today={today}
+            profile={profile}
+            meal={logMeal}
+            onMeal={setMealPick}
+            unit={units === 'imperial' ? 'oz' : 'g'}
+            onLogged={(item) => setLogged({ item })}
+          />
+          <LoggedBar
+            logged={loggedHere?.item}
+            undone={loggedHere?.undone}
+            profile={profile}
+            onUndo={() => void undo()}
+            onAddMacros={(id) => openEntry(id, true)}
+            onAdjust={(id) => openEntry(id)}
+          />
+
+          <DayTotals totals={sumTotals(entries)} goals={profile.goals} gaps={macroGaps(entries)} />
 
           <Button variant="secondary" onClick={() => void copyYesterday()} disabled={yesterdayCount === 0} className="w-full sm:w-auto">
             <CopyIcon size={18} />
@@ -92,7 +117,7 @@ export function FoodPage() {
                 entries={entries.filter((e) => e.meal === slot)}
                 addLink={addLink(slot)}
                 units={units === 'imperial' ? 'oz' : 'g'}
-                onOpen={(id) => openEntry(id)}
+                onOpen={(id, macros) => openEntry(id, macros)}
                 onMenu={() => setMenu(slot)}
               />
             ))}
@@ -123,7 +148,17 @@ export function FoodPage() {
           }}
         />
       )}
-      {entryId && profile && <EditEntry id={entryId} profile={profile} units={units} onClose={() => openEntry()} />}
+      {entryId && profile && (
+        <EditEntryDialog
+          key={entryId + (params.get('macros') ?? '')}
+          id={entryId}
+          profile={profile}
+          units={units}
+          macros={params.get('macros') === '1'}
+          onMacros={() => openEntry(entryId, true)}
+          onClose={() => openEntry()}
+        />
+      )}
     </>
   )
 }
@@ -154,11 +189,12 @@ function MealPanel({
   entries: FoodEntry[]
   addLink: string
   units: 'g' | 'oz'
-  onOpen: (id: string) => void
+  onOpen: (id: string, macros?: boolean) => void
   onMenu: () => void
 }) {
   const name = mealName(slot, profile)
   const totals = sumTotals(entries)
+  const gaps = macroGaps(entries)
   return (
     <Panel
       title={name}
@@ -181,22 +217,32 @@ function MealPanel({
         <>
           <ul className="-mx-4 -mt-4">
             {entries.map((e) => (
-              <li key={e.id} className="border-b border-line-soft">
-                <button type="button" onClick={() => onOpen(e.id)} className="group flex min-h-touch w-full items-center gap-3 px-4 py-2 text-left">
+              <li key={e.id} className="flex items-stretch border-b border-line-soft">
+                <button type="button" onClick={() => onOpen(e.id)} className="group flex min-h-touch min-w-0 flex-1 items-center gap-3 py-2 pl-4 pr-2 text-left">
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-semibold group-hover:text-accent">{e.name}</span>
                     <span className="block truncate text-sm text-muted">
                       {[e.brand, describeAmount(e, units)].filter(Boolean).join(' · ')}
-                      {e.missing?.length ? ' · incomplete' : ''}
+                      {e.missing?.includes('kcal') ? ' · incomplete' : ''}
                     </span>
                   </span>
                   <span className="shrink-0 font-display text-lg font-semibold tabular-nums">{formatKcal(e.kcal)}</span>
                 </button>
+                {lacksMacros(e) && (
+                  <button
+                    type="button"
+                    onClick={() => onOpen(e.id, true)}
+                    className="min-h-touch shrink-0 px-3 text-sm text-muted underline decoration-faint underline-offset-2 hover:text-accent"
+                  >
+                    add macros<span className="sr-only"> to {e.name}</span>
+                  </button>
+                )}
               </li>
             ))}
           </ul>
           <p className="mt-2 text-sm text-muted">
             <MacroLine totals={totals} />
+            {gaps ? ' · ' + gaps + ' without macros' : ''}
           </p>
         </>
       ) : (
@@ -332,102 +378,6 @@ function MealMenu({
           </button>
         </li>
       </ul>
-    </Dialog>
-  )
-}
-
-/** Edit or remove a logged entry. */
-function EditEntry({ id, profile, units, onClose }: { id: string; profile: Profile; units: 'metric' | 'imperial'; onClose: () => void }) {
-  const data = useLiveQuery(async () => {
-    const entry = await getEntry(id)
-    if (!entry) return { entry: undefined, food: undefined }
-    const stored = entry.foodId ? await getFood(entry.foodId) : undefined
-    // The food as it is now, with the values the entry was logged with.
-    const fromEntry = foodFromPortion(entry)
-    const food: Food | undefined = fromEntry && { ...fromEntry, servings: stored?.servings ?? fromEntry.servings, source: stored?.source ?? fromEntry.source }
-    return { entry, food }
-  }, [id])
-
-  if (!data) return null
-  const { entry, food } = data
-  if (!entry) {
-    return (
-      <Dialog title="Not found" onClose={onClose}>
-        <p className="text-muted">This entry was removed.</p>
-        <Button onClick={onClose}>Close</Button>
-      </Dialog>
-    )
-  }
-
-  async function remove() {
-    await deleteEntry(id)
-    onClose()
-  }
-
-  async function save(portion: Portion, meal: MealSlot) {
-    await updateEntry(id, portion, meal)
-    onClose()
-  }
-
-  if (!food) return <QuickEntry entry={entry} profile={profile} onSave={save} onRemove={remove} onClose={onClose} />
-  return (
-    <PortionDialog
-      food={food}
-      initial={entry}
-      meal={entry.meal}
-      profile={profile}
-      units={units}
-      submitLabel="Save"
-      onSubmit={(p, meal) => void save(p, meal)}
-      onDelete={() => void remove()}
-      onClose={onClose}
-    />
-  )
-}
-
-function QuickEntry({
-  entry,
-  profile,
-  onSave,
-  onRemove,
-  onClose,
-}: {
-  entry: FoodEntry
-  profile: Profile
-  onSave: (p: Portion, meal: MealSlot) => Promise<void>
-  onRemove: () => Promise<void>
-  onClose: () => void
-}) {
-  const id = useId()
-  const [meal, setMeal] = useState(entry.meal)
-  return (
-    <Dialog title={entry.name} onClose={onClose}>
-      <p>
-        {formatKcal(entry.kcal)} kcal · <MacroLine totals={entry} />
-      </p>
-      <div>
-        <label htmlFor={`${id}-meal`} className="label">
-          Meal
-        </label>
-        <select id={`${id}-meal`} value={meal} onChange={(e) => setMeal(e.target.value as MealSlot)} className={`${inputClass} mt-1`}>
-          {MEAL_SLOTS.map((m) => (
-            <option key={m} value={m}>
-              {mealName(m, profile)}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="flex gap-2">
-        <Button className="flex-1" onClick={() => void onSave(entry, meal)}>
-          Save
-        </Button>
-        <Button variant="secondary" onClick={onClose}>
-          Cancel
-        </Button>
-      </div>
-      <Button variant="secondary" className="w-full" onClick={() => void onRemove()}>
-        Remove from log
-      </Button>
     </Dialog>
   )
 }

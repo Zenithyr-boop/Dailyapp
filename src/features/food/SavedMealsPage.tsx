@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { Button } from '../../components/Button'
 import { Dialog } from '../../components/Dialog'
@@ -7,9 +7,9 @@ import { ChevronLeftIcon, ChevronRightIcon, TrashIcon } from '../../components/i
 import { PageHeader } from '../../components/PageHeader'
 import { Panel } from '../../components/Panel'
 import type { Portion } from '../../lib/db'
-import { IconButton, inputClass } from '../train/workouts/fields'
+import { IconButton, inputClass, NumberField } from '../train/workouts/fields'
 import { useUnits } from '../profile/units'
-import { deleteSavedMeal, FOOD_NAME_MAX, getSavedMeal, listSavedMeals, updateSavedMeal } from './foodsRepo'
+import { createSimpleMeal, deleteSavedMeal, FOOD_NAME_MAX, getSavedMeal, listSavedMeals, updateSavedMeal } from './foodsRepo'
 import { describeAmount, formatKcal, sumTotals } from './nutrition'
 import { MacroLine } from './ui/TotalsBars'
 
@@ -32,6 +32,11 @@ export function SavedMealsPage() {
     <>
       <Back to="/food" label="Food" />
       <PageHeader title="Saved meals" />
+      <p className="mb-4 text-muted">
+        Log a meal in one tap: from the Food tab’s box (type its name) or Add food → Saved meals. Save the foods you ate together from a meal’s menu (⋯ → Save as a
+        meal), or make one here from just a name and its calories.
+      </p>
+      <NewSimpleMeal />
       <Panel title="Your meals" aside={meals ? String(meals.length) : undefined}>
         {!meals ? (
           <p className="text-muted">Loading…</p>
@@ -55,12 +60,96 @@ export function SavedMealsPage() {
             })}
           </ul>
         ) : (
-          <p className="text-muted">
-            No saved meals yet. On the Food tab, open a meal’s menu (⋯) and choose “Save as a meal”. Then log it in one tap from Add food → Saved meals.
-          </p>
+          <p className="text-muted">No saved meals yet.</p>
         )}
       </Panel>
     </>
+  )
+}
+
+/** A meal from just a name and its total calories; macros optional under "More details". */
+function NewSimpleMeal() {
+  const id = useId()
+  const [name, setName] = useState('')
+  const [kcal, setKcal] = useState<number | undefined>()
+  const [macros, setMacros] = useState<{ proteinG?: number; carbsG?: number; fatG?: number }>({})
+  const [saved, setSaved] = useState('')
+  const valid = name.trim() !== '' && kcal !== undefined && kcal > 0
+
+  async function save(e: FormEvent) {
+    e.preventDefault()
+    if (!valid) return
+    await createSimpleMeal(name, { kcal: kcal!, ...macros })
+    setSaved(`Saved “${name.trim()}”.`)
+    setName('')
+    setKcal(undefined)
+    setMacros({})
+  }
+
+  return (
+    <Panel title="New meal" className="mb-4">
+      <form onSubmit={(e) => void save(e)} className="space-y-3">
+        <div className="grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-2">
+          <div>
+            <label htmlFor={`${id}-name`} className="label">
+              Name
+            </label>
+            <input
+              id={`${id}-name`}
+              className={`${inputClass} mt-1`}
+              value={name}
+              maxLength={FOOD_NAME_MAX}
+              placeholder="e.g. Usual breakfast"
+              onChange={(e) => {
+                setName(e.target.value)
+                setSaved('')
+              }}
+            />
+          </div>
+          <div>
+            <label htmlFor={`${id}-kcal`} className="label">
+              Calories
+            </label>
+            <NumberField id={`${id}-kcal`} className="mt-1" value={kcal} onChange={setKcal} min={0} max={10000} optional placeholder="kcal" />
+          </div>
+        </div>
+        <details className="border border-line">
+          <summary className="flex min-h-touch cursor-pointer items-center px-3 text-sm font-semibold text-muted hover:text-accent">More details (macros)</summary>
+          <div className="grid grid-cols-3 gap-2 border-t border-line-soft p-3">
+            {(
+              [
+                ['proteinG', 'Protein'],
+                ['carbsG', 'Carbs'],
+                ['fatG', 'Fat'],
+              ] as const
+            ).map(([k, label]) => (
+              <div key={k}>
+                <label htmlFor={`${id}-${k}`} className="text-sm text-muted">
+                  {label} (g)
+                </label>
+                <NumberField
+                  id={`${id}-${k}`}
+                  className="mt-1"
+                  value={macros[k]}
+                  onChange={(v) => setMacros((m) => ({ ...m, [k]: v }))}
+                  min={0}
+                  max={1000}
+                  precision={1}
+                  optional
+                  placeholder="?"
+                />
+              </div>
+            ))}
+          </div>
+        </details>
+        <Button type="submit" disabled={!valid} className="w-full sm:w-auto">
+          Save meal
+        </Button>
+        <p role="status" className={saved ? 'text-sm' : 'sr-only'}>
+          {saved}
+        </p>
+      </form>
+    </Panel>
   )
 }
 

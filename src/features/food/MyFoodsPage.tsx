@@ -5,7 +5,15 @@ import { PageHeader } from '../../components/PageHeader'
 import { Panel } from '../../components/Panel'
 import { Tag } from '../train/library/Chip'
 import { listCustomFoods } from './foodsRepo'
-import { formatG, formatKcal } from './nutrition'
+import type { CustomFood } from '../../lib/db'
+import { formatG, formatKcal, lacksMacros } from './nutrition'
+
+/** "650 kcal per 1 plate" / "120 kcal · P 20 · C 0 · F 4 per 100 g". */
+function describeCustom(f: CustomFood): string {
+  const nominal = f.servings[0]?.nominal ? f.servings[0] : undefined
+  const macros = lacksMacros(f) ? '' : ` · P ${formatG(f.per100.proteinG)} · C ${formatG(f.per100.carbsG)} · F ${formatG(f.per100.fatG)}`
+  return `${formatKcal(f.per100.kcal)} kcal${macros} per ${nominal ? nominal.label : '100 g'}`
+}
 
 /** The user's own foods (and completed copies of packaged foods). */
 export function MyFoodsPage() {
@@ -42,9 +50,7 @@ export function MyFoodsPage() {
                   <span className="min-w-0 flex-1">
                     <span className="block font-semibold group-hover:text-accent">{f.name}</span>
                     <span className="block truncate text-sm text-muted">
-                      {[f.brand, `${formatKcal(f.per100.kcal)} kcal · P ${formatG(f.per100.proteinG)} · C ${formatG(f.per100.carbsG)} · F ${formatG(f.per100.fatG)} per 100 g`]
-                        .filter(Boolean)
-                        .join(' · ')}
+                      {[f.brand, describeCustom(f)].filter(Boolean).join(' · ')}
                     </span>
                   </span>
                   {f.basedOn && <Tag>Fixed product</Tag>}

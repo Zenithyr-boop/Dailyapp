@@ -4,7 +4,8 @@ import { Dialog } from '../../../components/Dialog'
 import type { MealSlot, Portion, Profile } from '../../../lib/db'
 import { inputClass, NumberField } from '../../train/workouts/fields'
 import { FOOD_NAME_MAX } from '../foodsRepo'
-import { formatKcal, kcalFromMacros, MEAL_SLOTS, mealName, roundTotals } from '../nutrition'
+import { formatKcal, kcalFromMacros, MEAL_SLOTS, mealName } from '../nutrition'
+import { quickPortion } from '../quickLog'
 
 interface QuickAddDialogProps {
   meal: MealSlot
@@ -13,7 +14,7 @@ interface QuickAddDialogProps {
   onClose: () => void
 }
 
-/** Log just calories and macros, without a food. Calories fill in from the macros if left empty. */
+/** Log just calories (macros optional), without a food. Calories fill in from the macros if left empty. */
 export function QuickAddDialog({ meal: initialMeal, profile, onSubmit, onClose }: QuickAddDialogProps) {
   const id = useId()
   const [name, setName] = useState('')
@@ -28,8 +29,10 @@ export function QuickAddDialog({ meal: initialMeal, profile, onSubmit, onClose }
   const valid = total > 0 || (proteinG ?? 0) + (carbsG ?? 0) + (fatG ?? 0) > 0
 
   function submit() {
-    const totals = roundTotals({ kcal: total, proteinG: proteinG ?? 0, carbsG: carbsG ?? 0, fatG: fatG ?? 0 })
-    onSubmit({ name: name.trim().replace(/\s+/g, ' ').slice(0, FOOD_NAME_MAX) || 'Quick add', ...totals }, meal)
+    onSubmit(
+      quickPortion({ name: name.trim().replace(/\s+/g, ' ').slice(0, FOOD_NAME_MAX), kcal: Math.round(total), proteinG, carbsG, fatG }),
+      meal,
+    )
   }
 
   const macro = (key: string, label: string, value: number | undefined, set: (v: number | undefined) => void) => (
@@ -42,7 +45,7 @@ export function QuickAddDialog({ meal: initialMeal, profile, onSubmit, onClose }
   )
 
   return (
-    <Dialog title="Quick add" onClose={onClose}>
+    <Dialog title="Quick log" onClose={onClose}>
       <div>
         <label htmlFor={`${id}-name`} className="label">
           Name (optional)
@@ -52,7 +55,7 @@ export function QuickAddDialog({ meal: initialMeal, profile, onSubmit, onClose }
           className={`${inputClass} mt-1`}
           value={name}
           maxLength={FOOD_NAME_MAX}
-          placeholder="Quick add"
+          placeholder="Quick log"
           onChange={(e) => setName(e.target.value)}
         />
       </div>
