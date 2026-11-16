@@ -53,6 +53,8 @@ It ships as:
   `JAVA_HOME="C:/Program Files/Android/Android Studio/jbr"`: `./gradlew assembleDebug`, `./gradlew assembleRelease`,
   `./gradlew signingReport` (SHA-1 fingerprints). Output: `android/app/build/outputs/apk/<debug|release>/`.
   The wrapper is Gradle 9.1 (Android Studio's bundled Java 25 can't run Capacitor's default 8.14); keep it ≥ 9.1.
+  Some plugins (`@capacitor/filesystem`) compile with a JDK 21 toolchain: `android/settings.gradle` applies the
+  foojay toolchain resolver, so Gradle downloads that JDK once into `~/.gradle/jdks`. Keep it.
   `android/local.properties` (git-ignored) has `sdk.dir=C:/Users/kevin/AppData/Local/Android/Sdk` (forward slashes).
 
 ## Folder layout
