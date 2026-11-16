@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "862971904136-j8f17o9eaod3mfp32v73pcpu7jekb6dg.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.fromzero",
+            "certificate_hash": "66c36c1966704455f4fd52c618822b683822b888"
+          }
+        },
+        {
           "client_id": "862971904136-jcqh481i69mjtpjldn3enghafujnuk3e.apps.googleusercontent.com",
           "client_type": 3
         }
