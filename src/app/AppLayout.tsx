@@ -3,6 +3,7 @@ import { SideNav } from '../components/SideNav'
 import { TabBar } from '../components/TabBar'
 import { PRIMARY_NAV, SECONDARY_NAV } from './nav'
 import { UpdateBanner } from './UpdateBanner'
+import { OfflineBanner } from './OfflineBanner'
 
 /** App shell: side nav (desktop) or bottom tab bar (mobile) around the page. */
 export function AppLayout() {
@@ -23,6 +24,7 @@ export function AppLayout() {
         className="mx-auto w-full max-w-3xl px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[calc(5rem+env(safe-area-inset-bottom))] md:pl-[calc(15rem+2rem)] md:pr-8 md:pt-[calc(2.5rem+env(safe-area-inset-top))] md:pb-12 md:max-w-none lg:pr-12"
       >
         <div className={wide ? 'md:max-w-6xl' : 'md:max-w-3xl'}>
+          <OfflineBanner />
           <UpdateBanner />
           <Outlet />
         </div>

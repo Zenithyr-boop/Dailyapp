@@ -35,20 +35,41 @@ interface GithubRelease {
   html_url?: string
   draft?: boolean
   prerelease?: boolean
-  assets?: { name?: string; browser_download_url?: string }[]
+  published_at?: string
+  assets?: { name?: string; browser_download_url?: string; size?: number }[]
 }
 
-/** The latest release if it's newer than `current`, else null. Throws on network errors. */
-export async function fetchUpdate(current: string, fetchFn: typeof fetch = fetch): Promise<UpdateInfo | null> {
+/** The latest published release (for the Download page), with its APK when it has one. */
+export interface LatestRelease extends UpdateInfo {
+  /** The APK's size in bytes, when there is one. */
+  apkSize?: number
+  /** ISO date it was published. */
+  publishedAt?: string
+}
+
+/** The latest published release, or null when there's none. Throws on network errors. */
+export async function fetchLatestRelease(fetchFn: typeof fetch = fetch): Promise<LatestRelease | null> {
   const res = await fetchFn(LATEST_API, { headers: { Accept: 'application/vnd.github+json' } })
   if (res.status === 404) return null // no release yet
   if (!res.ok) throw new Error(`GitHub releases: HTTP ${res.status}`)
   const release = (await res.json()) as GithubRelease
   if (!release.tag_name || release.draft || release.prerelease) return null
-  if (compareVersions(release.tag_name, current) <= 0) return null
   const pageUrl = release.html_url ?? RELEASES_PAGE
   const apk = release.assets?.find((a) => a.name?.toLowerCase().endsWith('.apk') && a.browser_download_url)
-  return { version: release.tag_name.replace(/^v/i, ''), downloadUrl: apk?.browser_download_url ?? pageUrl, pageUrl }
+  return {
+    version: release.tag_name.replace(/^v/i, ''),
+    downloadUrl: apk?.browser_download_url ?? pageUrl,
+    pageUrl,
+    apkSize: apk?.size,
+    publishedAt: release.published_at,
+  }
+}
+
+/** The latest release if it's newer than `current`, else null. Throws on network errors. */
+export async function fetchUpdate(current: string, fetchFn: typeof fetch = fetch): Promise<UpdateInfo | null> {
+  const latest = await fetchLatestRelease(fetchFn)
+  if (!latest || compareVersions(latest.version, current) <= 0) return null
+  return { version: latest.version, downloadUrl: latest.downloadUrl, pageUrl: latest.pageUrl }
 }
 
 /** The installed app's version (the APK's versionName), or this build's on the web. */

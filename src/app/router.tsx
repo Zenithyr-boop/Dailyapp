@@ -30,12 +30,16 @@ import { ProgramBuilderPage } from '../features/programs/ProgramBuilderPage'
 import { CommunityPage } from '../features/community/CommunityPage'
 import { PrivacyPage } from '../features/legal/PrivacyPage'
 import { HealthPage } from '../features/profile/health/HealthPage'
+import { DownloadPage } from '../features/download/DownloadPage'
+import { RouteError } from './RouteError'
 
 export const router = createBrowserRouter([
   // First-run flow: full screen, outside the app shell.
-  { path: '/welcome', element: <OnboardingPage /> },
+  { path: '/welcome', element: <OnboardingPage />, errorElement: <RouteError /> },
   // Readable by anyone, before setup too (Health Connect links here).
-  { path: '/privacy', element: <PrivacyPage /> },
+  { path: '/privacy', element: <PrivacyPage />, errorElement: <RouteError /> },
+  // Shareable with people who don't have the app yet.
+  { path: '/download', element: <DownloadPage />, errorElement: <RouteError /> },
   {
     path: '/',
     element: (
@@ -43,40 +47,47 @@ export const router = createBrowserRouter([
         <AppLayout />
       </OnboardingGate>
     ),
+    errorElement: <RouteError />,
     children: [
-      { index: true, element: <Navigate to="/quests" replace /> },
-      // Wide: the desktop dashboard (quests + panels) uses more of the screen.
-      { path: 'quests', element: <QuestsPage />, handle: { wide: true } },
-      { path: 'quests/edit', element: <EditQuestsPage /> },
-      { path: 'quests/history', element: <HistoryPage /> },
-      { path: 'train', element: <TrainPage /> },
-      { path: 'train/movements', element: <MovementLibraryPage /> },
-      { path: 'train/movements/new', element: <MovementFormPage /> },
-      { path: 'train/movements/:id', element: <MovementDetailPage /> },
-      { path: 'train/movements/:id/edit', element: <MovementFormPage /> },
-      { path: 'train/workouts/new', element: <WorkoutBuilderPage /> },
-      { path: 'train/workouts/:id', element: <WorkoutBuilderPage /> },
-      { path: 'train/session', element: <SessionPage /> },
-      { path: 'train/sessions/:id', element: <SessionSummaryPage /> },
-      { path: 'food', element: <FoodPage /> },
-      { path: 'food/add', element: <AddFoodPage /> },
-      { path: 'food/foods', element: <MyFoodsPage /> },
-      { path: 'food/foods/new', element: <CustomFoodFormPage /> },
-      { path: 'food/foods/:id/edit', element: <CustomFoodFormPage /> },
-      { path: 'food/meals', element: <SavedMealsPage /> },
-      { path: 'food/meals/:id', element: <SavedMealPage /> },
-      { path: 'squad', element: <SquadPage /> },
-      { path: 'me', element: <ProfilePage /> },
-      { path: 'me/goals', element: <GoalsPage /> },
-      { path: 'me/health', element: <HealthPage /> },
-      { path: 'body', element: <BodyPage /> },
-      { path: 'body/measurements', element: <MeasurementsPage /> },
-      { path: 'body/photos', element: <PhotosPage /> },
-      { path: 'body/photos/compare', element: <ComparePage /> },
-      { path: 'programs', element: <ProgramsPage /> },
-      { path: 'programs/new/:template', element: <ProgramBuilderPage /> },
-      { path: 'community', element: <CommunityPage /> },
-      { path: '*', element: <NotFoundPage /> },
+      {
+        // A crashing page shows the error inside the shell, so the tabs still work.
+        errorElement: <RouteError inShell />,
+        children: [
+          { index: true, element: <Navigate to="/quests" replace /> },
+          // Wide: the desktop dashboard (quests + panels) uses more of the screen.
+          { path: 'quests', element: <QuestsPage />, handle: { wide: true } },
+          { path: 'quests/edit', element: <EditQuestsPage /> },
+          { path: 'quests/history', element: <HistoryPage /> },
+          { path: 'train', element: <TrainPage /> },
+          { path: 'train/movements', element: <MovementLibraryPage /> },
+          { path: 'train/movements/new', element: <MovementFormPage /> },
+          { path: 'train/movements/:id', element: <MovementDetailPage /> },
+          { path: 'train/movements/:id/edit', element: <MovementFormPage /> },
+          { path: 'train/workouts/new', element: <WorkoutBuilderPage /> },
+          { path: 'train/workouts/:id', element: <WorkoutBuilderPage /> },
+          { path: 'train/session', element: <SessionPage /> },
+          { path: 'train/sessions/:id', element: <SessionSummaryPage /> },
+          { path: 'food', element: <FoodPage /> },
+          { path: 'food/add', element: <AddFoodPage /> },
+          { path: 'food/foods', element: <MyFoodsPage /> },
+          { path: 'food/foods/new', element: <CustomFoodFormPage /> },
+          { path: 'food/foods/:id/edit', element: <CustomFoodFormPage /> },
+          { path: 'food/meals', element: <SavedMealsPage /> },
+          { path: 'food/meals/:id', element: <SavedMealPage /> },
+          { path: 'squad', element: <SquadPage /> },
+          { path: 'me', element: <ProfilePage /> },
+          { path: 'me/goals', element: <GoalsPage /> },
+          { path: 'me/health', element: <HealthPage /> },
+          { path: 'body', element: <BodyPage /> },
+          { path: 'body/measurements', element: <MeasurementsPage /> },
+          { path: 'body/photos', element: <PhotosPage /> },
+          { path: 'body/photos/compare', element: <ComparePage /> },
+          { path: 'programs', element: <ProgramsPage /> },
+          { path: 'programs/new/:template', element: <ProgramBuilderPage /> },
+          { path: 'community', element: <CommunityPage /> },
+          { path: '*', element: <NotFoundPage /> },
+        ],
+      },
     ],
   },
 ])
