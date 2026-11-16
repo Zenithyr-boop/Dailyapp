@@ -21,7 +21,7 @@ It ships as:
 - React + TypeScript (strict) + Vite
 - Tailwind CSS v4, design tokens defined in `src/styles/theme.css` with `@theme`
 - React Router for pages
-- PWA: `vite-plugin-pwa` (offline support, installable)
+- PWA: `vite-plugin-pwa` (offline support, installable; update banner, see "Versions & updates")
 - Data: local-first. Everything works without an account (IndexedDB via Dexie).
   Signing in syncs to Firebase (Auth + Cloud Firestore), staying inside the free Spark plan.
 - Charts: uPlot (Body screens)
@@ -355,12 +355,29 @@ squad data readable by members only; community posts readable by all signed-in u
   `keyPassword`. Losing the keystore means users must uninstall to update: keep two copies.
 
 ### Release steps (Claude runs them; the user approves publishing)
+Full routine in `docs/RELEASING.md`. In short:
 1. Bump `version` in package.json (e.g. 0.2.0), commit on the release branch/PR, merge to main.
 2. `npm run android:sync`, then in `android/`: `./gradlew assembleRelease` → `android/app/build/outputs/apk/release/app-release.apk`.
 3. Rename to `FromZero-<version>.apk`, then `gh release create v<version> <apk> --title "FromZero <version>" --notes "…"`.
    The tag must be `v` + package.json's version, or the update check won't match.
 Same in Android Studio: Build → Generate Signed App Bundle or APK… → APK → Next → choose the keystore → Next → release →
 Create; then on github.com: the repo → Releases → Draft a new release → tag `v<version>` → attach the APK → Publish release.
+
+## Versions & updates (`lib/buildInfo.ts`, `lib/webUpdates.ts`, `lib/updates.ts`, `lib/forceRefresh.ts`)
+- package.json `version` is the only place the version lives. `vite.config.ts` injects `__BUILD_INFO__` (version, short
+  git commit, build time) and writes the same to `/version.json`; the APK's versionName/versionCode come from it too.
+  Me → About shows "FromZero 0.9.0 · a1b2c3d · 11 Nov · Web" (or "· Android").
+- Website/PWA: the service worker is `registerType: 'prompt'`, registered only on the web (`startWebUpdates` in main.tsx;
+  the APK unregisters any). On open and whenever the app is back in view (≤ once a minute) it fetches `/version.json`
+  (`no-store`) and calls `registration.update()`; a newer build (`isNewerBuild`: higher version, or same version from a
+  later commit) or a waiting worker shows "New version available · Update", which skips waiting and reloads.
+  Me: Check for updates, and Force refresh (unregisters the worker, clears Cache Storage, reloads; never touches
+  IndexedDB/localStorage, proven in `forceRefresh.test.ts`). Force refresh is hidden in the APK.
+- Android app: website deploys never reach it; only a new APK does (GitHub Releases check, see "Android app").
+- Sync: Me → About shows "Last synced 2 min ago" + Sync now (`syncNow`: Firestore `disableNetwork`/`enableNetwork` so
+  listeners catch up, then upload). `syncOnResume` runs it when the app is back in view, at most once a minute.
+- Hosting (`firebase.json`): `index.html`, `sw.js`, the manifest and workbox files are `no-cache`, `version.json` is
+  `no-store`, `/assets/**` (hashed) is cached for a year, immutable.
 
 ## How I work (important)
 - I use only the Claude desktop app's Code tab. I never type in a terminal.
@@ -377,6 +394,7 @@ Create; then on github.com: the repo → Releases → Draft a new release → ta
 ## Working agreement
 - Plan first for anything touching more than a couple of files; wait for my OK.
 - One feature per session/branch. Run `npm run build` (and tests) before saying it's done.
+- Bump the version in package.json on every user-facing change, and follow `docs/RELEASING.md` to ship it.
 - Commit in small steps with clear messages.
 - The Firebase web config is public by design (security comes from Firestore rules), so it lives in
   a committed `.env` as `VITE_FIREBASE_*` variables. Real secrets never go in git: the service

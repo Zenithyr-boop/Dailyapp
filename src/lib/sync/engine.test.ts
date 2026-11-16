@@ -4,7 +4,7 @@ import { starterById } from '../../features/train/workouts/starters'
 import { deleteSession, getSession, patchSet, setDone, startSession, updateSession } from '../../features/train/sessions/sessionsRepo'
 import { deleteWorkout, getWorkout, listStoredWorkouts, saveWorkout, workoutLists } from '../../features/train/workouts/workoutsRepo'
 import { DEFAULT_QUESTS, ensureDay, ensureSetup, listQuestDefs, setQuestDone } from '../../features/quests/questsRepo'
-import { countPending, getSyncStatus, startSync, stopSync } from './engine'
+import { countPending, getSyncStatus, RESUME_SYNC_EVERY_MS, startSync, stopSync, syncNow, syncOnResume } from './engine'
 import type { RemoteBatch, RemoteStore } from './remote'
 import { useManualQuests } from '../../test/manualQuests'
 
@@ -13,6 +13,7 @@ class FakeCloud {
   docs = new Map<string, { table: SyncedTable; record: SyncedRecord; syncedAt: number }>()
   clock = 1000
   writes = 0
+  reconnects = 0
   private listeners: { table: SyncedTable; since: number; fn: (b: RemoteBatch) => void }[] = []
 
   private notify(table: SyncedTable, record: SyncedRecord, syncedAt: number) {
@@ -59,6 +60,9 @@ class FakeCloud {
       },
       deleteAll: async () => {
         this.docs.clear()
+      },
+      reconnect: async () => {
+        this.reconnects++
       },
     }
   }
@@ -276,6 +280,26 @@ describe('ongoing sync', () => {
     await deleteSession(id)
     await settled()
     expect((cloud.records('sessions')[0] as Session).deleted).toBe(1)
+  })
+
+  it('Sync now reconnects (pull), uploads what waits (push) and records the time', async () => {
+    const q = (await db.days.get(today))!.quests[3]!
+    vi.setSystemTime(new Date(`${today}T11:00:00`))
+    await setQuestDone(today, q.id, true)
+    await syncNow()
+    await settled()
+    expect(cloud.reconnects).toBe(1)
+    expect((cloud.records('days')[0] as Day).quests[3]!.done).toBe(true)
+    expect(getSyncStatus().lastSyncedAt).toBe(new Date(`${today}T11:00:00`).getTime())
+  })
+
+  it('syncs when the app comes back into view, at most once a minute', async () => {
+    const t = Date.now() + 10 * RESUME_SYNC_EVERY_MS
+    await syncOnResume(t)
+    await syncOnResume(t + 5_000)
+    expect(cloud.reconnects).toBe(1)
+    await syncOnResume(t + RESUME_SYNC_EVERY_MS)
+    expect(cloud.reconnects).toBe(2)
   })
 
   it('waits while offline and uploads when back online', async () => {
