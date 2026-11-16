@@ -39,6 +39,11 @@ export interface RemoteStore {
   upload(items: Upload[]): Promise<void>
   /** Remove every document in the account (Delete my account). */
   deleteAll(): Promise<void>
+  /**
+   * Drop and reopen the connection, so the listeners catch up now ("Sync now", back in view).
+   * Listeners resume from where they were: only documents that changed are read again.
+   */
+  reconnect?(): Promise<void>
 }
 
 const BATCH_LIMIT = 450
@@ -121,6 +126,11 @@ export async function createFirestoreRemote(uid: string): Promise<RemoteStore> {
         await batch.commit()
         countUsage('writes', chunk.length)
       }
+    },
+
+    async reconnect() {
+      await fs.disableNetwork(db)
+      await fs.enableNetwork(db)
     },
 
     async deleteAll() {

@@ -3,7 +3,7 @@
  * stops and the app keeps working on local data only.
  */
 import { authAvailable, watchAuth } from '../../lib/auth'
-import { startSync, stopSync, type SyncOptions } from '../../lib/sync/engine'
+import { startSync, stopSync, syncOnResume, type SyncOptions } from '../../lib/sync/engine'
 import { closeOutDays } from '../quests/closeOut'
 import { checkMilestones, DEFAULT_QUESTS } from '../quests/questsRepo'
 
@@ -22,4 +22,13 @@ export const syncOptions: SyncOptions = {
 export function initAccountSync(): void {
   if (!authAvailable) return
   watchAuth((user) => (user ? startSync(user.uid, syncOptions) : stopSync()))
+  // iPhone and Android pause apps in the background: catch up when the app is back in view.
+  // (The Android WebView fires visibilitychange on resume too.)
+  const onVisible = () => {
+    if (document.visibilityState === 'visible') void syncOnResume()
+  }
+  document.addEventListener('visibilitychange', onVisible)
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted) void syncOnResume()
+  })
 }

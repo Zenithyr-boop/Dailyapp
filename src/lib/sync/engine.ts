@@ -86,6 +86,8 @@ class SyncSession {
   /** Cloud batches are applied one at a time, in order. */
   private applyQueue: Promise<void> = Promise.resolve()
   private listenerError = false
+  /** Connecting (first sign-in, listeners): "Sync now" waits for it rather than starting twice. */
+  private starting = false
 
   readonly uid: string
   private readonly options: SyncOptions
@@ -96,6 +98,15 @@ class SyncSession {
   }
 
   async start(): Promise<void> {
+    this.starting = true
+    try {
+      await this.connect()
+    } finally {
+      this.starting = false
+    }
+  }
+
+  private async connect(): Promise<void> {
     setStatus({ state: 'syncing', error: undefined, lastSyncedAt: await getMeta<number>(LAST_SYNCED) })
     try {
       const remote = await this.options.createRemote(this.uid)
@@ -125,10 +136,33 @@ class SyncSession {
     window.removeEventListener('offline', this.handleOffline)
   }
 
+  /**
+   * "Sync now", and the app coming back into view: reconnect to the cloud so the listeners
+   * catch up (pull), then upload what's waiting (push). Phones pause apps in the background,
+   * which can leave the connection stale.
+   */
+  async refresh(): Promise<void> {
+    if (this.stopped || this.starting) return
+    if (!this.remote) return this.retry()
+    if (!isOnline()) {
+      setStatus({ state: 'offline' })
+      return
+    }
+    setStatus({ state: 'syncing' })
+    try {
+      await this.remote.reconnect?.()
+    } catch (error) {
+      this.fail(error)
+      return
+    }
+    await this.retry()
+  }
+
   /** Upload now and, if a listener failed, reconnect. */
   async retry(): Promise<void> {
     clearTimeout(this.retryTimer)
     this.retryIndex = 0
+    if (this.starting) return
     if (!this.remote) return this.start()
     if (this.listenerError) {
       this.unsubscribers.forEach((u) => u())
@@ -362,9 +396,20 @@ export function stopSync(): void {
   setStatus({ state: 'off', error: undefined })
 }
 
-/** "Retry" on the Me screen. */
+/** "Sync now" / "Retry" on the Me screen: pull what changed in the cloud and push what's waiting. */
 export async function syncNow(): Promise<void> {
-  await session?.retry()
+  await session?.refresh()
+}
+
+/** Don't resync on every quick app switch: at most this often when coming back into view. */
+export const RESUME_SYNC_EVERY_MS = 60_000
+let lastResumeSync = 0
+
+/** The app came back into view (phones pause apps in the background): sync, at most once a minute. */
+export function syncOnResume(now = Date.now()): Promise<void> {
+  if (!session || now - lastResumeSync < RESUME_SYNC_EVERY_MS) return Promise.resolve()
+  lastResumeSync = now
+  return syncNow()
 }
 
 /** Changes on this device that haven't reached the cloud yet. */
