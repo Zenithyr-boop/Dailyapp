@@ -12,6 +12,7 @@ import { DayStartPanel } from './DayStartPanel'
 import { HeightUnitToggle, UnitToggle } from './UnitToggle'
 import { HealthPanel } from './health/HealthPanel'
 import { AboutVersion } from './AboutVersion'
+import { DataPanel } from './data/DataPanel'
 
 export function ProfilePage() {
   return (
@@ -22,6 +23,7 @@ export function ProfilePage() {
         <HealthPanel />
         <BadgesPanel />
         <AccountPanel />
+        <DataPanel />
         <Panel title="Units">
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
