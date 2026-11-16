@@ -4,10 +4,47 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { readFileSync } from 'node:fs'
+import { execSync } from 'node:child_process'
 import { privacyPolicyHtml } from './src/features/legal/policyHtml.ts'
 
-/** package.json's version: shown in Me → About and compared with GitHub Releases (lib/updates.ts). */
-const APP_VERSION = (JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }).version
+/**
+ * Build info (lib/buildInfo.ts). package.json's `version` is the only place the version lives;
+ * android/app/build.gradle reads it too (versionName, and versionCode 1.2.3 → 10203).
+ */
+function gitCommit(): string {
+  try {
+    return execSync('git rev-parse --short=7 HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()
+  } catch {
+    return process.env.GITHUB_SHA?.slice(0, 7) ?? 'unknown'
+  }
+}
+
+const BUILD_INFO = {
+  version: (JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }).version,
+  commit: gitCommit(),
+  builtAt: new Date().toISOString(),
+}
+
+/**
+ * `/version.json`: this build's info. The website fetches it (uncached) when it opens or comes
+ * back into view, to learn that a newer deploy is live (lib/webUpdates.ts).
+ */
+function versionFile(): Plugin {
+  const json = JSON.stringify(BUILD_INFO, null, 2)
+  return {
+    name: 'fromzero-version-json',
+    configureServer(server) {
+      server.middlewares.use('/version.json', (_req, res) => {
+        res.setHeader('Content-Type', 'application/json')
+        res.setHeader('Cache-Control', 'no-store')
+        res.end(json)
+      })
+    },
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'version.json', source: json })
+    },
+  }
+}
 
 /**
  * `privacypolicy.html`: the privacy policy as a script-free page (src/features/legal).
@@ -31,15 +68,17 @@ function privacyPolicyPage(): Plugin {
 
 export default defineConfig({
   define: {
-    __APP_VERSION__: JSON.stringify(APP_VERSION),
+    __BUILD_INFO__: JSON.stringify(BUILD_INFO),
   },
   plugins: [
     react(),
     tailwindcss(),
     privacyPolicyPage(),
+    versionFile(),
     VitePWA({
-      registerType: 'autoUpdate',
-      // Registered in main.tsx, and only on the website: the Android app has no service worker.
+      // A new deploy waits until the user taps Update on the banner (lib/webUpdates.ts).
+      registerType: 'prompt',
+      // Registered by lib/webUpdates.ts, and only on the website: the Android app has no service worker.
       injectRegister: false,
       includeAssets: ['icon.svg'],
       manifest: {

@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
-/** package.json's version, injected by vite.config.ts. */
-declare const __APP_VERSION__: string
+/** This build's version (package.json), short git commit and build time, injected by vite.config.ts. */
+declare const __BUILD_INFO__: { version: string; commit: string; builtAt: string }
 
 interface ImportMetaEnv {
   readonly VITE_FIREBASE_API_KEY?: string

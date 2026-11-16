@@ -7,6 +7,7 @@
  * The release's `.apk` asset is the download; without one, the release page is.
  */
 import { App } from '@capacitor/app'
+import { BUILD_INFO, compareVersions } from './buildInfo'
 import { isAndroidApp } from './platform'
 
 export const RELEASES_REPO = 'Zenithyr-boop/Dailyapp'
@@ -18,34 +19,15 @@ const LATEST_API = `https://api.github.com/repos/${RELEASES_REPO}/releases/lates
 export const CHECK_EVERY_MS = 6 * 60 * 60 * 1000
 
 /** The version of this build (package.json, injected by vite.config.ts). */
-export const BUILD_VERSION: string = __APP_VERSION__
+export const BUILD_VERSION: string = BUILD_INFO.version
+
+export { compareVersions }
 
 export interface UpdateInfo {
   version: string
   /** The APK (or the release page when the release has no APK). */
   downloadUrl: string
   pageUrl: string
-}
-
-/** Parse "v1.2.3" / "1.2.3-beta" into numbers; missing parts are 0. */
-function parts(version: string): number[] {
-  return version
-    .trim()
-    .replace(/^v/i, '')
-    .split(/[.+-]/)
-    .slice(0, 3)
-    .map((p) => Number.parseInt(p, 10) || 0)
-}
-
-/** > 0 when `a` is newer than `b`, < 0 when older, 0 when the same. */
-export function compareVersions(a: string, b: string): number {
-  const x = parts(a)
-  const y = parts(b)
-  for (let i = 0; i < 3; i++) {
-    const d = (x[i] ?? 0) - (y[i] ?? 0)
-    if (d !== 0) return d
-  }
-  return 0
 }
 
 interface GithubRelease {
