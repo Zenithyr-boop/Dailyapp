@@ -64,6 +64,7 @@ export function NumberField({
   className?: string
   'aria-label'?: string
   'aria-describedby'?: string
+  autoFocus?: boolean
 }) {
   const factor = 10 ** precision
   const round = (n: number) => Math.round(n * factor) / factor

@@ -20,8 +20,8 @@ const ALIASES: readonly [RegExp, string][] = [
   [/bell pepper/, 'capsicum'],
   [/arugula/, 'rocket'],
   [/^ground /, 'mince minced'],
-  [/oatmeal/, 'porridge'],
-  [/oats/, 'porridge oatmeal'],
+  [/^oatmeal(,|$)/, 'porridge'],
+  [/^(oats|instant oats)\b/, 'porridge oatmeal'],
   [/shrimp/, 'prawn prawns'],
   [/potato chips/, 'crisps'],
   [/french fries/, 'chips fries'],
@@ -39,6 +39,24 @@ const ALIASES: readonly [RegExp, string][] = [
   [/hard-boiled/, 'boiled egg'],
   [/ketchup/, 'catsup tomato sauce'],
   [/eggs?\b/, 'egg'],
+  // Cooked = any cooking method, so "chicken breast cooked" finds roasted and grilled.
+  [/roasted|grilled|baked|boiled|broiled|fried|stewed|steamed|sauteed|poached|braised|rotisserie/, 'cooked'],
+  [/\bdry\b/, 'uncooked raw'],
+  [/spaghetti with meat sauce/, 'bolognese spag bol'],
+  [/^mac and cheese/, 'macaroni mac n cheese'],
+  [/hamburger|cheeseburger/, 'burger'],
+  [/peanut butter and jelly/, 'pbj pb&j pb and j'],
+  [/bacon, lettuce, tomato/, 'blt'],
+  [/stir-fry/, 'stir fry stirfry'],
+  [/chicken (breast|thigh|drumstick|wings?)/, 'chicken'],
+  [/^yogurt|greek yogurt/, 'yoghurt'],
+  [/doughnut/, 'donut'],
+  [/soda\b|soft drink/, 'pop fizzy'],
+  [/french toast/, 'eggy bread'],
+  [/sandwich/, 'sarnie'],
+  [/chili/, 'chilli'],
+  [/^oatmeal(,|$)/, 'oats'],
+  [/tuna salad/, 'tuna mayo'],
 ]
 
 export interface FoodIndexEntry {
@@ -141,5 +159,9 @@ export function searchFoods(index: readonly FoodIndexEntry[], query: string, lim
   return results.slice(0, limit).map((r) => r.food)
 }
 
-/** Boosts for each source. */
-export const BOOST = { custom: 0.15, favorite: 0.1, usda: 0, off: -0.05 } as const
+/**
+ * Boosts for each source. Match scores sit between ~0.5 and ~1.75, so a boost of 1
+ * puts the tiers in order: the user's own (recent, custom, favourites, saved meals),
+ * then the bundled whole foods and dishes, then packaged products.
+ */
+export const BOOST = { recent: 1, custom: 1, favorite: 1, meal: 1, usda: 0, pick: 0.3, off: -1 } as const

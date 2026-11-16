@@ -70,7 +70,7 @@ export function ProfilePage() {
             by yuhonas, released into the public domain (Unlicense).
           </p>
           <p className="mt-2 text-muted">
-            Whole foods:{' '}
+            Whole foods and everyday dishes:{' '}
             <a href="https://fdc.nal.usda.gov/" target="_blank" rel="noreferrer" className="text-accent underline underline-offset-2 hover:text-text">
               USDA FoodData Central
             </a>{' '}

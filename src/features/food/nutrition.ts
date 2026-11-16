@@ -17,6 +17,19 @@ export interface Food extends FoodSnapshot {
 
 export const NUTRIENTS: readonly Nutrient[] = ['kcal', 'proteinG', 'carbsG', 'fatG']
 
+export const MACROS = ['proteinG', 'carbsG', 'fatG'] as const satisfies readonly Nutrient[]
+export type Macro = (typeof MACROS)[number]
+
+/** The entry/food has no value for some macros (quick log with just calories, incomplete product). */
+export function lacksMacros(p: { missing?: readonly Nutrient[] }): boolean {
+  return !!p.missing?.some((n) => n !== 'kcal')
+}
+
+/** How many entries are missing a macro (or this one macro). */
+export function macroGaps(entries: readonly { missing?: readonly Nutrient[] }[], macro?: Macro): number {
+  return entries.filter((e) => (macro ? !!e.missing?.includes(macro) : lacksMacros(e))).length
+}
+
 export const NUTRIENT_LABELS: Record<Nutrient, string> = {
   kcal: 'Calories',
   proteinG: 'Protein',
@@ -93,6 +106,20 @@ export function kcalFromMacros(t: Pick<Totals, 'proteinG' | 'carbsG' | 'fatG'>):
   return Math.round(t.proteinG * 4 + t.carbsG * 4 + t.fatG * 9)
 }
 
+/** What one tap logs: the food's first serving, or 100 g. */
+export function defaultAmount(food: Pick<FoodSnapshot, 'servings'>): Amount {
+  const serving = food.servings[0]
+  return serving ? { servings: 1, serving } : { grams: 100 }
+}
+
+/** "1 medium" / "100 g" and its calories, for result lists. */
+export function defaultServingText(food: Pick<FoodSnapshot, 'servings' | 'per100'>): { label: string; kcal: number } {
+  const serving = food.servings[0]
+  return serving
+    ? { label: serving.label, kcal: Math.round((food.per100.kcal * serving.grams) / 100) }
+    : { label: '100 g', kcal: Math.round(food.per100.kcal) }
+}
+
 /** How much was eaten: grams, or a number of servings. */
 export type Amount = { grams: number } | { servings: number; serving: Serving }
 
@@ -158,6 +185,7 @@ export function snapshotOf(food: FoodSnapshot): FoodSnapshot {
   if (food.barcode) s.barcode = food.barcode
   if (food.missing?.length) s.missing = [...food.missing]
   if (food.kcalFromKj) s.kcalFromKj = true
+  if (food.per100.fiberG === undefined) delete s.per100.fiberG
   return s
 }
 
@@ -174,11 +202,12 @@ export function formatGrams(grams: number, unit: 'g' | 'oz' = 'g'): string {
   return `${Math.round(grams * 10) / 10} g`
 }
 
-/** How a portion reads in a list: "2 × 1 large (100 g)", "150 g". */
+/** How a portion reads in a list: "2 × 1 large (100 g)", "150 g", "1 plate". */
 export function describeAmount(p: Portion, unit: 'g' | 'oz' = 'g'): string {
-  if (p.grams === undefined) return 'Quick add'
+  if (p.grams === undefined) return 'Quick log'
   if (p.servings !== undefined && p.serving) {
     const count = Math.round(p.servings * 100) / 100
+    if (p.serving.nominal) return count === 1 ? p.serving.label : `${count} × ${p.serving.label}`
     return `${count} × ${p.serving.label} (${formatGrams(p.grams, unit)})`
   }
   return formatGrams(p.grams, unit)

@@ -26,7 +26,7 @@ It ships as:
   Signing in syncs to Firebase (Auth + Cloud Firestore), staying inside the free Spark plan.
 - Charts: uPlot (Body screens)
 - Android: Capacitor 8; health data via `@capgo/capacitor-health` (Health Connect)
-- Food data: bundled USDA FoodData Central whole foods + Open Food Facts API (packaged foods, barcodes);
+- Food data: bundled USDA FoodData Central whole foods and dishes (~1,800) + Open Food Facts API (packaged foods, barcodes);
   barcode scanning with BarcodeDetector, `@zxing/browser` as the fallback (see "Food logging")
 - Hosting: Firebase Hosting, deployed by GitHub Actions (`FirebaseExtended/action-hosting-deploy@v0`)
   on every push to `main`, using the repo secret `FIREBASE_SERVICE_ACCOUNT`. Pull requests get
@@ -42,8 +42,9 @@ It ships as:
 - `npm run emulators` + `npm run dev:emulator` — local Firebase Auth emulator (port 9099) and a
   dev server on 5174 that signs in against it with fake accounts (launch configs `auth-emulator`,
   `fromzero-dev-emulator`). Use these to test sign-in; never create test accounts in the real project.
-- `npm run import:foods` — rebuild `features/food/library/foods.json` from `foodList.ts` (FDC API with
-  `FDC_API_KEY` or DEMO_KEY; `-- --file <SR Legacy JSON>` reads the USDA download instead)
+- `npm run import:foods` — rebuild `features/food/library/foods.json` from `foodList.ts` + `dishList.ts` (FDC API with
+  `FDC_API_KEY` or DEMO_KEY; or the USDA downloads: `-- --file <SR Legacy JSON> --file <Foundation JSON> --file <FNDDS
+  survey JSON>`; FNDDS dishes need the survey file or the API)
 - `npm run android:sync` — build the website and copy it into `android/` (run before every APK build)
 - `npm run android:open` — open the Android project in Android Studio
 - `npm run icons` — redraw the FZ mark (`scripts/make-icons.ts` → `assets/`, `public/icon.svg`) and regenerate every
@@ -128,9 +129,10 @@ Rules:
 - `users/{uid}/workouts/{id}` workout templates (items: movement, sets, target by tracking type, RPE, rest, note, superset group); `users/{uid}/sessions/{id}` logged sessions (exercises with targets and sets: kg, reps,
   rpe, seconds, metres, done; no `finishedAt` = still in progress)
 - `users/{uid}/food/{id}` food log entries: date, meal slot, `loggedAt`, the food's name/brand/barcode/`foodId`,
-  amount (grams, or servings + the serving), a copy of its values per 100 g, `missing` nutrients, and the totals
-- `users/{uid}/foods/{id}` the user's custom foods (ids `custom-…`; per 100 g + servings; `basedOn` = barcode of an
-  Open Food Facts product they completed); `users/{uid}/favorites/{foodId}` favourite foods (with a copy of the food);
+  amount (grams, or servings + the serving), a copy of its values per 100 g, `missing` nutrients (quick logs without
+  macros, incomplete products; they count as 0), and the totals
+- `users/{uid}/foods/{id}` the user's custom foods (ids `custom-…`; per 100 g + servings, or one `nominal` serving whose
+  values are per serving; `missing` macros; `basedOn` = barcode of an Open Food Facts product they completed); `users/{uid}/favorites/{foodId}` favourite foods (with a copy of the food);
   `users/{uid}/savedMeals/{id}` saved meals (name + portions)
 - The Open Food Facts product cache (`offProducts`) is device-only, never synced
 - `users/{uid}/programs/{id}` programs: template `kind`, name, length, strict, starting rules, `startDate` (day 1 of the
@@ -206,20 +208,43 @@ squad data readable by members only; community posts readable by all signed-in u
   muscle), plate steps.
 
 ## Food logging (`src/features/food`)
-- Food tab (`/food`, `?date=` for earlier days, never future; shared date switcher): calories as a 10-block bar and protein/carbs/fat as flat bars against
-  the saved goals, then four meals (names editable) with per-meal totals. A meal's ⋯ menu: copy the day before's
-  meal, save as a meal, rename. "Copy yesterday" copies a whole day. Tapping an entry edits/moves/removes it (`?entry=`).
-- Add food (`/food/add?meal=&date=`): one search over everything on the device (bundled USDA foods, custom foods,
-  favourites, cached packaged products; `search.ts`, unit-tested: typos, partial words, UK words like courgette/mince).
-  Ranking: own foods, then favourites, nudged ahead of equal matches. Empty search shows tabs: Recent (from the log),
-  Favourites, My foods, Saved meals (log in one tap). Dialogs live in the URL (`?food=`, `?scan=1`, `?quick=1`) so
-  Back closes them. The food dialog logs by servings, grams or ounces; quick add = just kcal + macros (kcal from 4/4/9
-  if empty).
+- Rule: logging must be fast and favour real food. Only calories are ever required; macros are welcome, never demanded.
+- Food tab (`/food`, `?date=` for earlier days, never future; shared date switcher): Quick log box on top, then calories
+  as a 10-block bar and protein/carbs/fat as flat bars against the saved goals, then four meals (names editable) with
+  per-meal totals. A meal's ⋯ menu: copy the day before's meal, save as a meal, rename. "Copy yesterday" copies a whole
+  day. Tapping an entry edits/moves/removes it (`?entry=`; `&macros=1` opens the add-macros fields).
+- Quick log (the default; `ui/QuickLogBox.tsx`, parser `quickLog.ts`, unit-tested): "chicken breast and rice - 500" or
+  "chicken and rice 500 cal" logs at once; the rest of the text is the name ("Quick log" if none). Picks up macros
+  ("500 cal 40p 50c 12f", "40g protein", "p40"), explicit kcal before macros, else a trailing number ≥ 10; kcal from
+  4/4/9 when only macros are given. The meal comes from the time of day (`mealForTime`) with a one-tap change. Matching
+  foods from the device show under the box (one tap logs). Enter logs a parsed entry; otherwise it looks up a barcode
+  or, with no local match, searches Open Food Facts. "Save for next time" also makes a custom food (see below).
+- After any log, `ui/LoggedBar.tsx` shows Undo (`logActions.ts`), "Add macros" for entries without them, and
+  "Adjust amount" for foods. Entries without macros have `missing: ['proteinG', …]`: they count as 0, the day's totals
+  say quietly "N entries have no macros…" (`macroGaps`), meal rows show a subtle "add macros" link, and an automatic
+  protein quest says "· N entries without protein" while under goal (`LinkData.proteinUnknown`). Calories always count.
+- Search (`search.ts` + `ui/useFoodSearch.ts`, unit-tested: typos, partial words, aliases like courgette/mince/spag
+  bol/pbj, "cooked" matches any cooking method). Tiers by `BOOST`: recents, own foods, favourites and saved meals first,
+  then whole foods and dishes (coach's staples in `library/picks.ts` nudged up), then cached packaged products. Rows
+  read "Banana · 1 medium · 105 kcal" with a source label (Recent / Yours / Favourite / Saved meal / Whole food / Dish /
+  Packaged); a tap logs the default serving (`defaultAmount`) with Undo + Adjust amount.
+- Open Food Facts is only used for a barcode, a tap on "Search packaged foods", or Enter when nothing local matches.
+- Add food (`/food/add?meal=&date=`): the same one-tap search for a chosen meal; empty search shows tabs: Recent,
+  Favourites, My foods, Saved meals (all one tap). Dialogs live in the URL (`?food=`, `?scan=1`, `?quick=1`) so Back
+  closes them. The food dialog logs by servings, grams or ounces.
+- Custom foods (`/food/foods`, `foodsRepo.ts`): only a name, a serving label (default "1 serving") and calories
+  ("Mom's lasagna, 1 plate, 650"); weight, macros, brand, barcode and more servings are under a collapsed "More
+  details". No weight = a `nominal` serving (100 g stand-in, values per serving; shown without grams, can't be logged
+  by weight). Blank macros are stored as `missing`. Quick log's "Save for next time" uses `createQuickFood`.
+- Saved meals (`/food/meals`): a combination of logged foods (meal ⋯ → Save as a meal), or just a name + total calories
+  (`createSimpleMeal`, macros optional). Both log in one tap.
 - Every entry stores the food's values, so copying meals/days, recents and saved meals never need a lookup.
   `loggedAt` only goes up, so entries keep their order. All amounts in grams (ounces only for display/input).
-- USDA list (`library/`): ~340 whole foods from FoodData Central SR Legacy (public domain). `foodList.ts` is the
-  coach's list (FDC id, display name, group, `SERVING_OVERRIDES`); `npm run import:foods` writes `foods.json`
-  (own chunk, loaded on demand, precached). Ids are `usda-<fdcId>`: never change them. Tests check the list.
+- USDA library (`library/`, public domain): ~1,800 foods. Single foods from SR Legacy/Foundation in `foodList.ts`,
+  everyday dishes from FNDDS in `dishList.ts` (both coach-editable: FDC id, short display name, group,
+  `SERVING_OVERRIDES`). Values per 100 g: kcal, protein, carbs, fat, fibre, plus household servings. Names say raw or
+  cooked/dry for anything that changes with cooking (tested). `npm run import:foods` writes `foods.json` (own chunk,
+  loaded when the Food tab opens, precached; never in the main bundle). Ids are `usda-<fdcId>`: never change them.
 - Open Food Facts (`off.ts`): identifies as `FromZero/0.1.0 (https://fromzero-ce670.web.app)` in `X-User-Agent`
   (browsers can't set User-Agent). Product reads via `/api/v2/product/{code}`; text search via `/cgi/search.pl`
   ONLY when the user submits (their rule: no search-as-you-type; their newer search server has no CORS). Client limiter

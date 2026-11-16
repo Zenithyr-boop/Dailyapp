@@ -102,6 +102,12 @@ export interface LinkData {
   kcal: number
   proteinG: number
   foodEntries: number
+  /**
+   * Entries logged without protein (quick logs with just calories). They count as 0,
+   * so the protein quest ticks only once the known protein reaches the goal, and
+   * its line says how many entries it couldn't count.
+   */
+  proteinUnknown?: number
   /** Finished workouts that day. */
   workouts: number
   /** Progress photos for that day on this device (photos never sync). */
@@ -156,7 +162,11 @@ export function describeLink(link: QuestLink, d: LinkData, units: UnitSystem): s
     case 'photo':
       return d.photos ? 'Photo added' : 'No photo yet'
     case 'protein':
-      return d.goals.proteinG ? `${num.format(d.proteinG)} / ${num.format(d.goals.proteinG)} g protein` : 'Set your protein goal in Me → Goals'
+      if (!d.goals.proteinG) return 'Set your protein goal in Me → Goals'
+      return (
+        `${num.format(d.proteinG)} / ${num.format(d.goals.proteinG)} g protein` +
+        (d.proteinUnknown && d.proteinG < d.goals.proteinG ? ` · ${d.proteinUnknown} ${d.proteinUnknown === 1 ? 'entry' : 'entries'} without protein` : '')
+      )
     case 'calories':
       return d.goals.kcal
         ? `${num.format(d.kcal)} kcal · target ${num.format(d.goals.kcal)} ± ${num.format(l.target!)}`

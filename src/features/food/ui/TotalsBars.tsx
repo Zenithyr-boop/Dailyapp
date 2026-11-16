@@ -72,7 +72,7 @@ export function MacroBar({ label, grams, target }: { label: string; grams: numbe
 }
 
 /** The day's totals against the targets from onboarding / Me → Goals. */
-export function DayTotals({ totals, goals }: { totals: Totals; goals: Goals }) {
+export function DayTotals({ totals, goals, gaps = 0 }: { totals: Totals; goals: Goals; gaps?: number }) {
   const hasTargets = !!goals?.kcal
   return (
     <section aria-label="Today's totals" className="border border-panel-edge bg-panel p-4">
@@ -82,6 +82,11 @@ export function DayTotals({ totals, goals }: { totals: Totals; goals: Goals }) {
         <MacroBar label="Carbs" grams={totals.carbsG} target={goals?.carbsG} />
         <MacroBar label="Fat" grams={totals.fatG} target={goals?.fatG} />
       </div>
+      {gaps > 0 && (
+        <p className="mt-3 text-sm text-muted">
+          {gaps === 1 ? '1 entry has' : `${gaps} entries have`} no macros, so protein, carbs and fat may be higher than shown.
+        </p>
+      )}
       {!hasTargets && (
         <p className="mt-3 text-sm text-muted">
           No targets yet.{' '}

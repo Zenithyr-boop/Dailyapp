@@ -238,14 +238,23 @@ export interface Per100 {
   proteinG: number
   carbsG: number
   fatG: number
+  /** Fibre, when the source lists it (bundled USDA foods). Shown, not tracked. */
+  fiberG?: number
 }
 
-export type Nutrient = keyof Per100
+/** The values every food and entry has (missing ones are listed in `missing` and count as 0). */
+export type Nutrient = 'kcal' | 'proteinG' | 'carbsG' | 'fatG'
 
 /** A named portion of a food, e.g. "1 large" = 50 g. */
 export interface Serving {
   label: string
   grams: number
+  /**
+   * The weight isn't known ("1 plate" of a custom food made from just a name and
+   * calories): `grams` is a stand-in 100, so the food's values per 100 g are its
+   * values per serving. Shown without grams; the food can't be logged by weight.
+   */
+  nominal?: boolean
 }
 
 /** The four meals of a day. Their names are editable (profile `mealNames`). */
@@ -269,7 +278,10 @@ export interface Portion {
   serving?: Serving
   /** The food's values when it was logged. */
   per100?: Per100
-  /** Nutrients the food's data was missing (counted as 0). */
+  /**
+   * Nutrients the food's data was missing (counted as 0): incomplete packaged foods,
+   * and quick logs / custom foods saved with just calories (no macros).
+   */
   missing?: Nutrient[]
   /** Totals for this amount. */
   kcal: number
@@ -300,6 +312,8 @@ export interface CustomFood extends SyncFields {
   per100: Per100
   servings: Serving[]
   basedOn?: string
+  /** Values the user left empty (a food saved with just calories has no macros). */
+  missing?: Nutrient[]
 }
 
 /** The parts of a food that favourites and the product cache keep, so they work without a lookup. */

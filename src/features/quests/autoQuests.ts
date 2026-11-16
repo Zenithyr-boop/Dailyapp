@@ -9,7 +9,7 @@
 import { liveQuery, type Subscription } from 'dexie'
 import { db, type Profile } from '../../lib/db'
 import { addDays, dayClock, getToday } from '../../lib/day'
-import { sumTotals } from '../food/nutrition'
+import { macroGaps, sumTotals } from '../food/nutrition'
 import { evaluateLink, type LinkData } from './links'
 import { checkMilestones } from './questsRepo'
 
@@ -31,6 +31,7 @@ export async function linkDataFor(date: string, goals: Profile['goals'] = {}): P
     kcal: totals.kcal,
     proteinG: totals.proteinG,
     foodEntries: entries.length,
+    proteinUnknown: macroGaps(entries, 'proteinG'),
     workouts: sessions.filter((s) => !s.deleted && s.finishedAt !== undefined).length,
     photos,
     goals: { kcal: goals.kcal, proteinG: goals.proteinG },

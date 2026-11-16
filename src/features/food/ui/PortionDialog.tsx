@@ -57,12 +57,14 @@ interface PortionDialogProps {
   units: UnitSystem
   submitLabel: string
   onSubmit: (portion: Portion, meal: MealSlot) => void
+  /** The entry has no macros: offer to add them. */
+  onAddMacros?: () => void
   onDelete?: () => void
   onClose: () => void
 }
 
 /** Pick an amount of a food (grams, ounces or servings) and the meal, with live totals. */
-export function PortionDialog({ food, initial, meal: initialMeal, profile, units, submitLabel, onSubmit, onDelete, onClose }: PortionDialogProps) {
+export function PortionDialog({ food, initial, meal: initialMeal, profile, units, submitLabel, onSubmit, onAddMacros, onDelete, onClose }: PortionDialogProps) {
   const ids = useId()
   const [{ unit, qty }, setAmount] = useState(() => initialState(food, initial, units))
   const [meal, setMeal] = useState(initialMeal)
@@ -80,6 +82,8 @@ export function PortionDialog({ food, initial, meal: initialMeal, profile, units
   }
 
   const isServing = unit.startsWith('s')
+  // A food made from just a name and calories: servings only, no weight.
+  const noWeight = food.servings[0]?.nominal === true
 
   return (
     <Dialog title={food.name} onClose={onClose}>
@@ -100,7 +104,22 @@ export function PortionDialog({ food, initial, meal: initialMeal, profile, units
         </button>
       </div>
 
-      {food.missing?.length ? (
+      {onAddMacros ? (
+        <div className="border border-line p-3 text-sm" role="note">
+          <p>No macros for this entry yet, so protein, carbs and fat count as 0.</p>
+          <button
+            type="button"
+            onClick={onAddMacros}
+            className="mt-2 inline-flex min-h-touch items-center font-display font-bold uppercase tracking-wider text-accent hover:text-text"
+          >
+            Add macros
+          </button>
+        </div>
+      ) : food.missing?.length && food.source !== 'off' ? (
+        <p className="text-sm text-muted" role="note">
+          No {missingText(food.missing)} saved for this food, so {food.missing.length > 1 ? 'they count' : 'it counts'} as 0.
+        </p>
+      ) : food.missing?.length ? (
         <div className="border border-line p-3 text-sm" role="note">
           <p>
             Open Food Facts is missing the <strong>{missingText(food.missing)}</strong> for this product, so {food.missing.length > 1 ? 'they count' : 'it counts'} as 0.
@@ -139,11 +158,11 @@ export function PortionDialog({ food, initial, meal: initialMeal, profile, units
           <select id={`${ids}-unit`} value={unit} onChange={(e) => changeUnit(e.target.value as UnitKey)} className={`${inputClass} mt-1`}>
             {food.servings.map((s, i) => (
               <option key={`${s.label}-${i}`} value={`s${i}`}>
-                {s.label} ({formatG(s.grams)} g)
+                {s.nominal ? s.label : `${s.label} (${formatG(s.grams)} g)`}
               </option>
             ))}
-            <option value="g">grams</option>
-            <option value="oz">ounces</option>
+            {!noWeight && <option value="g">grams</option>}
+            {!noWeight && <option value="oz">ounces</option>}
           </select>
         </div>
       </div>
@@ -154,10 +173,17 @@ export function PortionDialog({ food, initial, meal: initialMeal, profile, units
         <Stat label="Carbs" value={`${formatG(portion.carbsG)} g`} />
         <Stat label="Fat" value={`${formatG(portion.fatG)} g`} />
       </div>
-      <p className="-mt-2 text-xs text-muted">
-        {formatG(portion.grams ?? 0)} g · per 100 g: {formatKcal(food.per100.kcal)} kcal, P {formatG(food.per100.proteinG)} · C {formatG(food.per100.carbsG)} · F{' '}
-        {formatG(food.per100.fatG)}
-      </p>
+      {noWeight ? (
+        <p className="-mt-2 text-xs text-muted">
+          Per {food.servings[0]!.label}: {formatKcal(food.per100.kcal)} kcal
+        </p>
+      ) : (
+        <p className="-mt-2 text-xs text-muted">
+          {formatG(portion.grams ?? 0)} g · per 100 g: {formatKcal(food.per100.kcal)} kcal, P {formatG(food.per100.proteinG)} · C {formatG(food.per100.carbsG)} · F{' '}
+          {formatG(food.per100.fatG)}
+          {food.per100.fiberG !== undefined ? ` · fibre ${formatG(food.per100.fiberG)}` : ''}
+        </p>
+      )}
 
       <div>
         <label htmlFor={`${ids}-meal`} className="label">
