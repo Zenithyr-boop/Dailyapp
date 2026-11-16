@@ -96,10 +96,10 @@ export async function signInWithGoogle(): Promise<void> {
     await signInWithCredential(auth, credential)
     return
   }
-  const [auth, { GoogleAuthProvider, signInWithPopup }] = await Promise.all([getFirebaseAuth(), sdk()])
+  const [auth, { GoogleAuthProvider, signInWithPopup, browserPopupRedirectResolver }] = await Promise.all([getFirebaseAuth(), sdk()])
   const provider = new GoogleAuthProvider()
   provider.setCustomParameters({ prompt: 'select_account' })
-  await signInWithPopup(auth, provider)
+  await signInWithPopup(auth, provider, browserPopupRedirectResolver)
 }
 
 export async function sendPasswordReset(email: string): Promise<void> {
@@ -123,13 +123,13 @@ export async function signOutUser(): Promise<void> {
  * the account picker in the Android app); email accounts enter their password.
  */
 export async function reauthenticate(password?: string): Promise<void> {
-  const [auth, { EmailAuthProvider, GoogleAuthProvider, reauthenticateWithCredential, reauthenticateWithPopup }] =
+  const [auth, { EmailAuthProvider, GoogleAuthProvider, reauthenticateWithCredential, reauthenticateWithPopup, browserPopupRedirectResolver }] =
     await Promise.all([getFirebaseAuth(), sdk()])
   const user = auth.currentUser
   if (!user) throw Object.assign(new Error('Not signed in'), { code: 'auth/no-current-user' })
   if (password === undefined) {
     if (isNativeApp()) await reauthenticateWithCredential(user, await nativeGoogleCredential())
-    else await reauthenticateWithPopup(user, new GoogleAuthProvider())
+    else await reauthenticateWithPopup(user, new GoogleAuthProvider(), browserPopupRedirectResolver)
   } else {
     await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email ?? '', password))
   }

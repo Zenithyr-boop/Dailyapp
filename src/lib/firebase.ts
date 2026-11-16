@@ -43,10 +43,15 @@ export function getFirebaseApp(): Promise<FirebaseApp> {
 
 export function getFirebaseAuth(): Promise<Auth> {
   authPromise ??= Promise.all([getFirebaseApp(), import('firebase/auth')]).then(
-    ([app, { getAuth, initializeAuth, indexedDBLocalPersistence, connectAuthEmulator }]) => {
-      // Android app: no popup/redirect support (it loads Google's iframe helpers, which a
-      // Capacitor WebView can't use); sign-in comes from the native plugin (lib/auth.ts).
-      const auth = isNativeApp() ? initializeAuth(app, { persistence: indexedDBLocalPersistence }) : getAuth(app)
+    ([app, { initializeAuth, indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence, connectAuthEmulator }]) => {
+      // No popup/redirect resolver up front: with one, the SDK loads Google's sign-in iframe
+      // helpers (~130 KB) on every start, even for people who never sign in. The website
+      // passes it to the popup calls instead (lib/auth.ts). The Android app has no popups at
+      // all (a Capacitor WebView can't use them); sign-in comes from the native plugin.
+      // Same persistence as getAuth()'s default, so existing sign-ins carry over.
+      const auth = isNativeApp()
+        ? initializeAuth(app, { persistence: indexedDBLocalPersistence })
+        : initializeAuth(app, { persistence: [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence] })
       // Local testing only: `npm run dev:emulator` sets this (see `.env.emulator`).
       const emulatorUrl = env.VITE_FIREBASE_AUTH_EMULATOR_URL
       if (emulatorUrl) connectAuthEmulator(auth, emulatorUrl, { disableWarnings: true })

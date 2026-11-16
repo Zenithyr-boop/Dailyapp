@@ -93,7 +93,8 @@ Rules:
 - Touch targets ≥ 44px. Real `<button>`, `<a>`, `<input>` + `<label>`. aria-labels on icon buttons.
 - Icons: simple inline stroke SVGs (1.8px stroke), `currentColor`.
 - Mobile first: bottom tab bar (MVP: Quests, Train, Food, Body, Me; Squad returns after the MVP, its page
-  stays at /squad). Desktop: left side nav (Programs, Community under "More").
+  stays at /squad). Desktop: left side nav (Programs under "More"; Community returns once sharing is built, its
+  page stays at /community).
 - The approved mockups live in the claude.ai design canvas "Discipline app — design directions"
   (B-Web, B-Today, B-Squad). Match them.
 
@@ -245,7 +246,7 @@ squad data readable by members only; community posts readable by all signed-in u
   `SERVING_OVERRIDES`). Values per 100 g: kcal, protein, carbs, fat, fibre, plus household servings. Names say raw or
   cooked/dry for anything that changes with cooking (tested). `npm run import:foods` writes `foods.json` (own chunk,
   loaded when the Food tab opens, precached; never in the main bundle). Ids are `usda-<fdcId>`: never change them.
-- Open Food Facts (`off.ts`): identifies as `FromZero/0.1.0 (https://fromzero-ce670.web.app)` in `X-User-Agent`
+- Open Food Facts (`off.ts`): identifies as `FromZero/<version> (https://fromzero-ce670.web.app)` in `X-User-Agent`
   (browsers can't set User-Agent). Product reads via `/api/v2/product/{code}`; text search via `/cgi/search.pl`
   ONLY when the user submits (their rule: no search-as-you-type; their newer search server has no CORS). Client limiter
   at 14 reads / 9 searches a minute, backoff with jitter on 429/503. Dev server uses the staging server
@@ -332,6 +333,25 @@ squad data readable by members only; community posts readable by all signed-in u
   "Set my own numbers" = `macroMode: 'custom'` (warns below the floor, doesn't block).
 - Targets are saved, not derived on load: changing `coachTargets.ts` affects a user the next time they save goals.
 
+## Your data, public pages, quality (`features/profile/data`, `features/download`, `app/RouteError.tsx`)
+- Me → Your data: Export JSON (`buildExportFile`: every synced table in its cloud shape, no tombstones, `format` 1),
+  Export CSV (a zip from `lib/zip.ts`: days, quests, food, workouts; `lib/csv.ts` defuses formula cells), Import JSON
+  (`parseExport` validates and skips damaged records; `importData` merges with the sync rules, file = cloud copy with
+  `preferRemote`, days `concurrent`: never deletes; matches starter quests by name+type like a first sign-in; changed
+  records are flagged dirty so they upload). Photos are never exported. Signed out: "Erase everything on this device".
+  APK exports go through `@capacitor/filesystem` + `@capacitor/share` (WebViews can't download blobs).
+- Public pages outside the shell and gate: `/privacy`, `/download` (latest GitHub Release via `fetchLatestRelease`,
+  Android sideload steps, iPhone Add to Home Screen, desktop install; the visitor's platform goes first), `/welcome`.
+- Errors: every route has `errorElement` (`RouteError`: Reload, Go to Quests, Force refresh, details, Send feedback);
+  pages crash inside the shell. A missing chunk after a deploy says "FromZero was updated". Offline: `OfflineBanner`.
+- Loading: `components/Skeleton` (`PageSkeleton`, `PanelSkeleton`, `ListSkeleton`), never bare "Loading…" text.
+- Send feedback (Me → About, `lib/feedback.ts`): a GitHub issue from `.github/ISSUE_TEMPLATE/feedback.yml` with the
+  version and platform filled in through the URL. Nothing personal goes in the URL.
+- Routes are lazy (`app/router.tsx` `page()`), except Quests and onboarding (first screens). Keep the main chunk small:
+  Lighthouse (mobile) targets 90+ in every category; run it against `npm run preview` (launch config `fromzero-preview`).
+- Accessibility: axe-core (dev dependency) runs clean on every route at 375 px. Visible text must start/appear in an
+  element's accessible name (no aria-label that differs from what's on screen; use sr-only text instead).
+
 ## Account sync (`src/lib/sync`)
 - Dexie is the source of truth on the device; Firestore is the cloud copy. Signed out = local only.
 - Every synced record has `updatedAt` and a `dirty` flag, set by Dexie hooks in `lib/db.ts` on
@@ -367,7 +387,10 @@ squad data readable by members only; community posts readable by all signed-in u
   Connect's rationale WebView, which runs no JS; also served by the website). Update it when data use changes.
 - Native Google sign-in: `@capacitor-firebase/authentication` with `skipNativeAuth`; its ID token signs in to the
   Firebase web SDK (`lib/auth.ts`), also for re-auth; sign-out clears the native session. The APK's Auth uses
-  `initializeAuth` + IndexedDB persistence (no popup resolver). Needs `android/app/google-services.json`.
+  `initializeAuth` + IndexedDB persistence. Needs `android/app/google-services.json`.
+- The website also uses `initializeAuth` (getAuth's default persistence list) WITHOUT a popup resolver, so Google's
+  ~130 KB iframe helpers never load at startup; `signInWithPopup`/`reauthenticateWithPopup` get
+  `browserPopupRedirectResolver` passed in (`lib/firebase.ts`, `lib/auth.ts`).
   `firebase` 13 vs the plugin's peer range is bridged with an npm `overrides` entry (the plugin only passes a token).
 - `google-services.json` is NOT a secret (same public config as `.env`; Google sign-in is locked to the package name +
   SHA-1 fingerprints), so it's committed. Re-download it after adding fingerprints.

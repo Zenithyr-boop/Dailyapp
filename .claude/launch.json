@@ -27,6 +27,19 @@
         "dev:emulator"
       ],
       "port": 5174
+    },
+    {
+      "name": "fromzero-preview",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "preview",
+        "--",
+        "--port",
+        "4173",
+        "--strictPort"
+      ],
+      "port": 4173
     }
   ]
 }
