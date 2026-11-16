@@ -10,6 +10,8 @@ import { GoalsPanel } from './goals/GoalsPanel'
 import { BadgesPanel } from '../programs/BadgesPanel'
 import { DayStartPanel } from './DayStartPanel'
 import { HeightUnitToggle, UnitToggle } from './UnitToggle'
+import { HealthPanel } from './health/HealthPanel'
+import { AboutVersion } from './AboutVersion'
 
 export function ProfilePage() {
   return (
@@ -17,6 +19,7 @@ export function ProfilePage() {
       <PageHeader title="Me" />
       <div className="space-y-4">
         <GoalsPanel />
+        <HealthPanel />
         <BadgesPanel />
         <AccountPanel />
         <Panel title="Units">
@@ -57,6 +60,7 @@ export function ProfilePage() {
           <p className="text-muted">
             FromZero is free, built by a personal trainer. The core app stays free forever.
           </p>
+          <AboutVersion />
           <h3 className="label mt-4">Credits</h3>
           <p className="mt-1 text-muted">
             Exercise data and photos:{' '}

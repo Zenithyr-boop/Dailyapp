@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">FromZero</string>
+    <string name="title_activity_main">FromZero</string>
+    <string name="package_name">app.fromzero</string>
+    <string name="custom_url_scheme">app.fromzero</string>
+    <!-- Shown when Health Connect's "Privacy policy" link is tapped. A bundled, script-free copy
+         (public/privacypolicy.html, built from src/features/legal/privacyPolicy.ts), so it works offline. -->
+    <string name="health_connect_privacy_policy_url" translatable="false">file:///android_asset/public/privacypolicy.html</string>
+</resources>

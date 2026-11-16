@@ -1,10 +1,13 @@
 import { getFirebaseAuth, isFirebaseConfigured } from './firebase'
+import { isNativeApp } from './platform'
 
 /*
  * Thin wrapper around Firebase Auth so UI code (and tests) never touch the SDK directly.
  * The SDK is imported on demand, so it stays out of the startup bundle.
- * Google sign-in uses a popup, which only works on the website; the Android APK will need
- * the native `@capacitor-firebase/authentication` plugin later.
+ * Google sign-in: a popup on the website. In the Android app popups don't work, so the
+ * native `@capacitor-firebase/authentication` plugin shows Android's Google account picker
+ * and hands back an ID token, which signs in to the same Firebase web SDK (skipNativeAuth),
+ * so sync and Firestore keep one Auth instance everywhere.
  */
 
 export interface AuthUser {
@@ -62,7 +65,37 @@ export async function createAccount(email: string, password: string): Promise<vo
   await createUserWithEmailAndPassword(auth, email.trim(), password)
 }
 
+/**
+ * Android app: Google's account picker (native plugin), turned into a Firebase credential.
+ * Cancelling looks like closing the popup (no message); errors get Firebase-style codes.
+ */
+async function nativeGoogleCredential() {
+  const [{ FirebaseAuthentication }, { GoogleAuthProvider }] = await Promise.all([
+    import('@capacitor-firebase/authentication'),
+    sdk(),
+  ])
+  let idToken: string | undefined
+  try {
+    idToken = (await FirebaseAuthentication.signInWithGoogle()).credential?.idToken
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    const code = /cancel/i.test(message)
+      ? 'auth/popup-closed-by-user'
+      : /no credential/i.test(message)
+        ? 'auth/no-google-account'
+        : 'auth/native-google-failed'
+    throw Object.assign(new Error(message), { code })
+  }
+  if (!idToken) throw Object.assign(new Error('No Google ID token'), { code: 'auth/native-google-failed' })
+  return GoogleAuthProvider.credential(idToken)
+}
+
 export async function signInWithGoogle(): Promise<void> {
+  if (isNativeApp()) {
+    const [auth, credential, { signInWithCredential }] = await Promise.all([getFirebaseAuth(), nativeGoogleCredential(), sdk()])
+    await signInWithCredential(auth, credential)
+    return
+  }
   const [auth, { GoogleAuthProvider, signInWithPopup }] = await Promise.all([getFirebaseAuth(), sdk()])
   const provider = new GoogleAuthProvider()
   provider.setCustomParameters({ prompt: 'select_account' })
@@ -77,12 +110,17 @@ export async function sendPasswordReset(email: string): Promise<void> {
 export async function signOutUser(): Promise<void> {
   const [auth, { signOut }] = await Promise.all([getFirebaseAuth(), sdk()])
   await signOut(auth)
+  if (isNativeApp()) {
+    // Forget the Google account on the phone too, so the picker shows next time.
+    const { FirebaseAuthentication } = await import('@capacitor-firebase/authentication')
+    await FirebaseAuthentication.signOut().catch(() => {})
+  }
 }
 
 /**
  * Confirm it's really the user before deleting the account (Firebase requires a
- * recent sign-in). Google accounts pick their account again in a popup;
- * email accounts enter their password.
+ * recent sign-in). Google accounts pick their account again (a popup on the website,
+ * the account picker in the Android app); email accounts enter their password.
  */
 export async function reauthenticate(password?: string): Promise<void> {
   const [auth, { EmailAuthProvider, GoogleAuthProvider, reauthenticateWithCredential, reauthenticateWithPopup }] =
@@ -90,7 +128,8 @@ export async function reauthenticate(password?: string): Promise<void> {
   const user = auth.currentUser
   if (!user) throw Object.assign(new Error('Not signed in'), { code: 'auth/no-current-user' })
   if (password === undefined) {
-    await reauthenticateWithPopup(user, new GoogleAuthProvider())
+    if (isNativeApp()) await reauthenticateWithCredential(user, await nativeGoogleCredential())
+    else await reauthenticateWithPopup(user, new GoogleAuthProvider())
   } else {
     await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email ?? '', password))
   }
@@ -120,6 +159,8 @@ const MESSAGES: Record<string, string> = {
   'auth/user-mismatch': 'That’s a different account. Pick the one you’re signed in with.',
   'auth/requires-recent-login': 'Please confirm it’s you again, then try once more.',
   'auth/no-current-user': 'You’re signed out. Sign in again first.',
+  'auth/no-google-account': 'There’s no Google account on this phone. Add one in Android settings, or use email.',
+  'auth/native-google-failed': 'Google sign-in didn’t work. Try again, or use email.',
 }
 
 /** Codes that mean the user backed out; show nothing. */

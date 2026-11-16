@@ -6,6 +6,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useState } from 'react'
 import { getMeta, setMeta } from '../../../lib/db'
+import { isNativeApp } from '../../../lib/platform'
 
 const KEY = 'restTimer'
 export const ADJUST_SECONDS = 15
@@ -109,10 +110,20 @@ export function useRestTimer(): { timer: RestTimer | undefined; left: number } {
   return { timer, left }
 }
 
-/** Keep the screen on while `active` (Screen Wake Lock API; re-taken when the tab comes back). */
+/**
+ * Keep the screen on while `active`. Website/PWA: Screen Wake Lock API, re-taken when the
+ * tab comes back. Android app: the native keep-awake plugin (the WebView has no Wake Lock API).
+ */
 export function useWakeLock(active: boolean): void {
   useEffect(() => {
-    if (!active || !('wakeLock' in navigator)) return
+    if (!active || !isNativeApp()) return
+    const plugin = import('@capacitor-community/keep-awake').then(({ KeepAwake }) => KeepAwake)
+    void plugin.then((k) => k.keepAwake()).catch(() => {})
+    return () => void plugin.then((k) => k.allowSleep()).catch(() => {})
+  }, [active])
+
+  useEffect(() => {
+    if (!active || isNativeApp() || !('wakeLock' in navigator)) return
     let lock: WakeLockSentinel | undefined
     let stopped = false
     const request = () => {

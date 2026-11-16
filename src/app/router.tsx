@@ -28,10 +28,14 @@ import { ComparePage } from '../features/body/photos/ComparePage'
 import { ProgramsPage } from '../features/programs/ProgramsPage'
 import { ProgramBuilderPage } from '../features/programs/ProgramBuilderPage'
 import { CommunityPage } from '../features/community/CommunityPage'
+import { PrivacyPage } from '../features/legal/PrivacyPage'
+import { HealthPage } from '../features/profile/health/HealthPage'
 
 export const router = createBrowserRouter([
   // First-run flow: full screen, outside the app shell.
   { path: '/welcome', element: <OnboardingPage /> },
+  // Readable by anyone, before setup too (Health Connect links here).
+  { path: '/privacy', element: <PrivacyPage /> },
   {
     path: '/',
     element: (
@@ -64,6 +68,7 @@ export const router = createBrowserRouter([
       { path: 'squad', element: <SquadPage /> },
       { path: 'me', element: <ProfilePage /> },
       { path: 'me/goals', element: <GoalsPage /> },
+      { path: 'me/health', element: <HealthPage /> },
       { path: 'body', element: <BodyPage /> },
       { path: 'body/measurements', element: <MeasurementsPage /> },
       { path: 'body/photos', element: <PhotosPage /> },

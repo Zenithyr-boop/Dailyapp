@@ -95,7 +95,7 @@ export function MovementPicker({
       onKeyDown={handleKeyDown}
       className="fixed inset-0 z-40 overflow-y-auto overscroll-contain bg-bg"
     >
-      <div className="mx-auto w-full max-w-2xl px-4 pt-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pt-8">
+      <div className="mx-auto w-full max-w-2xl px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(6rem+env(safe-area-inset-bottom))] md:pt-8">
         <header className="mb-4 flex items-center justify-between gap-3">
           <h2 id={titleId} className="text-3xl font-extrabold leading-none">
             {title}
