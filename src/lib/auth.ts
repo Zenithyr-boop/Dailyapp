@@ -123,13 +123,14 @@ export async function signOutUser(): Promise<void> {
  * the account picker in the Android app); email accounts enter their password.
  */
 export async function reauthenticate(password?: string): Promise<void> {
-  const [auth, { EmailAuthProvider, GoogleAuthProvider, reauthenticateWithCredential, reauthenticateWithPopup, browserPopupRedirectResolver }] =
-    await Promise.all([getFirebaseAuth(), sdk()])
+  const [auth, firebaseAuth] = await Promise.all([getFirebaseAuth(), sdk()])
+  const { EmailAuthProvider, GoogleAuthProvider, reauthenticateWithCredential } = firebaseAuth
   const user = auth.currentUser
   if (!user) throw Object.assign(new Error('Not signed in'), { code: 'auth/no-current-user' })
   if (password === undefined) {
     if (isNativeApp()) await reauthenticateWithCredential(user, await nativeGoogleCredential())
-    else await reauthenticateWithPopup(user, new GoogleAuthProvider(), browserPopupRedirectResolver)
+    // The website's Auth has no popup resolver up front (lib/firebase.ts): pass it here.
+    else await firebaseAuth.reauthenticateWithPopup(user, new GoogleAuthProvider(), firebaseAuth.browserPopupRedirectResolver)
   } else {
     await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email ?? '', password))
   }
