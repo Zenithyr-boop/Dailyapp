@@ -1,3 +1,9 @@
+plugins {
+    // Some Capacitor plugins (e.g. @capacitor/filesystem) build with a JDK 21 toolchain, but the only JDK
+    // here is Android Studio's bundled one (25). This lets Gradle fetch a matching JDK once (~/.gradle/jdks).
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
 include ':app'
 include ':capacitor-cordova-android-plugins'
 project(':capacitor-cordova-android-plugins').projectDir = new File('./capacitor-cordova-android-plugins/')
