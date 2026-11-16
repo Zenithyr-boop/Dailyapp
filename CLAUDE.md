@@ -350,7 +350,7 @@ squad data readable by members only; community posts readable by all signed-in u
   latest GitHub Release of `Zenithyr-boop/Dailyapp` (public API, cached 6 h, "Later" skips that version); the banner's
   Download opens the release's `.apk` in the phone's browser. The repo must stay public for this and for downloads.
 - Barcode camera: `CAMERA` permission. Keep-awake during sessions: `@capacitor-community/keep-awake`.
-- Signing: release keystore at `C:\Users\kevin\FromZero-keys\fromzero-release.jks` (outside the repo, backed up, password
+- Signing: release keystore at `C:\Users\kevin\FromZero-keys\fromzero-release` (PKCS12, no file extension; outside the repo, backed up, password
   in a password manager). `android/keystore.properties` (git-ignored) holds `storeFile`, `storePassword`, `keyAlias`,
   `keyPassword`. Losing the keystore means users must uninstall to update: keep two copies.
 

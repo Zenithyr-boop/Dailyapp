@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "862971904136",
+    "project_id": "fromzero-ce670",
+    "storage_bucket": "fromzero-ce670.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:862971904136:android:a689dee5ff33ef5238df3d",
+        "android_client_info": {
+          "package_name": "app.fromzero"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "862971904136-17j7cgnm6bln1v2krlsilkbpb3j54fc5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.fromzero",
+            "certificate_hash": "27b7ec488a20c0d62c263ff98a2a96d4e3f8ed81"
+          }
+        },
+        {
+          "client_id": "862971904136-jcqh481i69mjtpjldn3enghafujnuk3e.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB_8ydu0I2YzxtlbiaffLNRHSZxDRL0pMw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "862971904136-jcqh481i69mjtpjldn3enghafujnuk3e.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
