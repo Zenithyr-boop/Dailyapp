@@ -447,3 +447,4 @@ export const SERVING_OVERRIDES: Readonly<Record<number, readonly (readonly [labe
   169677: [['1 small bag', 28]],
   167558: [['1 handful (10 chips)', 28]],
 }
+

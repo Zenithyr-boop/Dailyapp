@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import foods from './foods.json'
 import { FOOD_LIST, SERVING_OVERRIDES } from './foodList'
+import { FOOD_PICKS } from './picks'
 import type { UsdaJsonEntry } from './types'
 
 const entries = foods as UsdaJsonEntry[]
 
 /** Staples whose raw and cooked values differ a lot: the name must say which. */
-const STATE = /\b(raw|dry|uncooked|cooked|roasted|grilled|baked|boiled|broiled|fried|pan-fried|stewed|steamed|sauteed|poached|scrambled|rotisserie|braised|smoked|canned|instant|made with|with skin|skinless)\b/i
+const STATE = /\b(raw|dry|uncooked|cooked|roasted|grilled|baked|boiled|broiled|fried|pan-fried|stewed|steamed|sauteed|poached|scrambled|rotisserie|braised|smoked|canned|instant|made with)\b/i
 const STAPLE = /^(chicken (breast|thigh|drumstick|wings?)|white rice|brown rice|rice, (white|brown)|pasta|whole-wheat pasta|spaghetti|quinoa|oats|oatmeal|lentils|ground (beef|turkey|chicken|pork|lamb)|salmon|cod|tilapia|shrimp|turkey breast|pork (chop|tenderloin)|sirloin|ribeye|flank)(,|$)/i
 
 describe('bundled food list', () => {
@@ -56,6 +57,11 @@ describe('bundled food list', () => {
         expect(grams, `${e.name}: ${label}`).toBeGreaterThan(0)
       }
     }
+  })
+
+  it('only picks listed foods', () => {
+    const ids = new Set(FOOD_LIST.map((f) => f.fdcId))
+    for (const id of FOOD_PICKS) expect(ids.has(id), String(id)).toBe(true)
   })
 
   it('only overrides servings of listed foods', () => {
