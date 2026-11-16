@@ -9,7 +9,7 @@ import type { QuestFields } from '../../lib/db'
 import { useUnits } from '../profile/units'
 import { QuestForm } from '../quests/QuestForm'
 import { listQuestDefs, normalizeFields } from '../quests/questsRepo'
-import { getActiveProgram, startProgram } from './programsRepo'
+import { ActiveProgramError, getActiveProgram, startProgram } from './programsRepo'
 import { clampLength, programBonus, PROGRAM_LENGTH_MAX, PROGRAM_LENGTH_MIN, PROGRAM_RULES_MAX, templateById, type ProgramTemplate } from './templates'
 import { ruleSummary } from './format'
 
@@ -93,7 +93,7 @@ function Builder({ template }: { template: ProgramTemplate }) {
       await startProgram({ kind: template.id, name: template.custom ? name : template.name, length: days, strict, rules })
       navigate('/programs', { replace: true })
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Couldn’t start the program')
+      setError(e instanceof ActiveProgramError ? `${e.message}.` : 'Couldn’t start the program. Try again.')
       setBusy(false)
     }
   }

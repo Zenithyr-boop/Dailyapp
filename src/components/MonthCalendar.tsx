@@ -89,14 +89,14 @@ export function MonthCalendar({ month, today, selected, onMonthChange, onPick, d
               type="button"
               disabled={future}
               onClick={() => onPick(date)}
-              aria-label={label}
               aria-current={isSelected ? 'date' : undefined}
               className={`flex min-h-touch flex-col items-center justify-center tabular-nums hover:outline-1 hover:outline-accent disabled:text-faint disabled:hover:outline-0 ${
                 info?.mark ? MARK[info.mark] : ''
               } ${isSelected ? 'outline-2 outline-text' : isToday ? 'outline-2 outline-muted' : ''}`}
             >
-              <span className="font-display text-base font-bold leading-none">{Number(date.slice(8))}</span>
-              {info?.note && <span className="mt-0.5 text-[11px] leading-none">{info.note}</span>}
+              <span className="font-display text-base font-bold leading-none" aria-hidden="true">{Number(date.slice(8))}</span>
+              {info?.note && <span aria-hidden="true" className="mt-0.5 text-[11px] leading-none">{info.note}</span>}
+              <span className="sr-only">{label}</span>
             </button>
           )
         })}

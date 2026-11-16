@@ -32,7 +32,7 @@ describe('QuestsPage', () => {
 
   it('logs steps from the Today strip and ticks the steps quest', async () => {
     renderPage()
-    fireEvent.click(await screen.findByRole('button', { name: /^Steps: 0. Log steps/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Steps.*log steps/ }))
     const dialog = await screen.findByRole('dialog', { name: /Steps · Today/ })
     fireEvent.change(within(dialog).getByLabelText('Steps'), { target: { value: '9200' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))

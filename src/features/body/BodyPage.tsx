@@ -263,7 +263,7 @@ function TrendPanel({
               type="button"
               onClick={onGoal}
               className="-my-1 min-h-touch text-left font-display text-3xl font-bold tabular-nums leading-none hover:text-accent"
-              aria-label={goal === undefined ? 'Set a goal weight' : `Goal weight ${fmt1(showKg(goal, units))} ${unit}. Change`}
+              aria-label={goal === undefined ? 'Set goal weight' : `Goal weight ${fmt1(showKg(goal, units))} ${unit}. Change`}
             >
               {goal === undefined ? (
                 <span className="text-base uppercase tracking-wider text-accent">Set goal</span>
